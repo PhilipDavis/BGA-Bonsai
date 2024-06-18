@@ -1,0 +1,32 @@
+{
+    "100": {
+        "name": "Rule Set",
+        "values": {
+            "1": {
+                "name": "Bonsai",
+                "tmdisplay": "Standard game rules"
+            },
+            "2": {
+                "name": "Tokonoma Variant",
+                "tmdisplay": "All Parchment cards are placed in the first half of the deck"
+            }
+        },
+        "default": "1"
+    },
+    "101": {
+        "name": "Play with Goal Tiles",
+        "values": {
+            "1": {
+                "name": "Yes",
+                "tmdisplay": "Standard game rules"
+            },
+            "2": {
+                "name": "No",
+                "tmdisplay": "There will be no goal tiles in play",
+                "description": "If you are playing with inexperienced players, you may decide not to use the Goal tiles",
+                "firstgameonly": true
+            }
+        },
+        "default": "1"
+    }
+}
