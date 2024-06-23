@@ -32,11 +32,14 @@ define([], function () {
             return formatBlock(templateName, replacements, debug);
         };
 
-        const _fsr = gameui.__proto__.format_string_recursive;
+        //const _fsr = gameui.__proto__.format_string_recursive;
         gameui.__proto__.format_string_recursive = function() {
-            console.log(arguments);
-            // TODO: ... overwrite?
-            return _fsr.apply(gameui, arguments);
+            // Note: mine does not perform recursion!!
+
+            const [ template, args ] = arguments;
+            return stringFromTemplate(template, args, debug);
+
+            //return _fsr.apply(gameui, arguments);
         };
     }
 
@@ -54,14 +57,14 @@ define([], function () {
         // TODO: this part is less generic... maybe make the template name resolution more flexible?
         if (typeof replacements === 'object') {
             for (const [ key, value ] of Object.entries(replacements)) {
-                const match = /^_(?<dataKey>\D+)(?<index>\d*)$/.exec(key);
-                if (match) {
+                const logMatch = /^_(?<dataKey>\D+)(?<index>\d*)$/.exec(key);
+                if (logMatch) {
                     // This key/value pair is strictly for the replay logs, which don't have access
                     // to the images, CSS, nor JavaScript of the game page. We want to replace them
                     // with rich content for the in-game log.  Strip the leading underscore to find
                     // the name of the data key (which must have been sent from server side) and we
                     // replace the old key with the rich content.
-                    const { dataKey, index } = match.groups;
+                    const { dataKey, index } = logMatch.groups;
                     const dataValue = replacements[`${dataKey}${index}`];
                     if (dataValue !== undefined) {
                         if (typeof dataValue === 'object' && typeof dataValue.length === 'number') {
@@ -90,8 +93,11 @@ define([], function () {
         // happens even though it should. I figure this will never happen in
         // a real-world scenario.
         //
-        return template.replace(/(?<!\$)\$\{(.*?)\}/g, (match, name) => {
-            const value = replacements[name];
+        return template.replace(/(?<!\$)\$\{(?<name>.*?)(?:\[(?<index>.+?)\])?\}/g, (match, name, index) => {
+            let value = replacements[name];
+            if (typeof value === 'function') {
+                value = value(index);
+            }
             if (value === undefined) {
                 if (strict) {
                     throw new Error(`No replacement "${name}" in ${JSON.stringify(replacements)} for template ${template}`);
@@ -117,7 +123,7 @@ define([], function () {
             throw new Error(`Failed to process template name "${templateName}": ${err.message}`);
         }
 
-        return stringFromTemplate(templateHtml, replacements);
+        return stringFromTemplate(templateHtml, replacements, strict);
     }
 
     //

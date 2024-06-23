@@ -48,4 +48,25 @@ final class BonsaiLogicTest extends TestCase
 
         $this->assertTrue(true);
     }
+
+    public function testHelperCard()
+    {
+        $bonsai = BonsaiLogic::fromJson(
+            '{"board":[36,29,42,43],"order":[2393716,2393715],"options":{"goalTiles":true,"tokonomaVariant":false},"players":{"2393715":{"color":1,"faceUp":[3],"played":[[1,0,0,0]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":7,"faceDown":[],"mirrored":false,"inventory":{"leaf":1,"wood":2,"fruit":0,"flower":0},"renounced":[]},"2393716":{"color":0,"faceUp":[],"played":[[1,0,0,0]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[23],"mirrored":false,"inventory":{"leaf":1,"wood":3,"fruit":1,"flower":0},"renounced":[]}},"version":1,"drawPile":[21,46,22,47,45,2,1,7,15,30,32,19,39,11,8,16,44,40,41,37,18,34,12,35,24,38],"goalTiles":[4,6,10,12],"finalTurns":null,"nextPlayer":0}'
+        );
+        $drawCardId = 36;
+        $woodOrLeaf = 0;
+        $masterTiles = [];
+        $place = [
+            [ 'type' => 1, 'x' => 1, 'y' => 1, 'r' => 0 ],
+            [ 'type' => 1, 'x' => 1, 'y' => 2, 'r' => 0 ],
+        ];
+        $renounce = [];
+        $claim = [];
+        $discardTiles = [];
+
+        $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+
+        $this->assertTrue(true);
+    }
 }

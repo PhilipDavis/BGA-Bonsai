@@ -40,6 +40,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: space-between;
     gap: .5em;
 }
 .bon_player-summary-stat-block.bon_zero {
@@ -84,7 +85,7 @@
     background-repeat: no-repeat;
     border: solid .1em rgba(0,0,0,.3);
     border-radius: .75em;
-    margin: 1em auto;
+    margin: 1em auto 0 auto;
     clear: both;
     box-shadow: 0.2em 0.2em 0.3em rgba(0, 0, 0, .2);
 }
@@ -103,7 +104,7 @@
     border-radius: .5em;
     perspective: 10em;
 }
-#bon_deck.bon_deck-empty {
+#bon_deck.bon_empty {
     background: none;
     border: solid .1em transparent;
 }
@@ -237,19 +238,20 @@
 .bon_card-25 .bon_card-face { background-position:  -9.32em -13em; }
 .bon_card-26 .bon_card-face { background-position:  -9.32em -13em; }
 
-.bon_card-27 .bon_card-face { background-position: -32.62em -6.5em; }
+.bon_card-27 .bon_card-face { background-position: -18.64em -13em; }
 
-.bon_card-28 .bon_card-face { background-position: -37.28em -6.5em; }
+.bon_card-28 .bon_card-face { background-position: -13.98em -13em; }
 
 .bon_card-29 .bon_card-face { background-position: -27.96em -6.5em; }
 
-.bon_card-30 .bon_card-face { background-position:  -4.66em -13em; }
+.bon_card-30 .bon_card-face { background-position: -37.28em -6.5em; }
 
 .bon_card-31 .bon_card-face { background-position: -23.30em -13em; }
 
-.bon_card-32 .bon_card-face { background-position: -13.98em -13em; }
+.bon_card-32 .bon_card-face { background-position: -32.62em -6.5em; }
 
-.bon_card-33 .bon_card-face { background-position: -18.64em -13em; }
+.bon_card-33 .bon_card-face { background-position:  -4.66em -13em; }
+
 
 /* Helper */
 .bon_card-34 .bon_card-face { background-position: -37.28em -13em; }
@@ -280,22 +282,32 @@
 /* Player */
 
 .bon_player {
-    margin-bottom: 3em;
+    margin-bottom: 6em;
+}
+
+.bon_tree-host {
+    margin: 4em 0;
+    min-height: 20em;
+    position: relative;
+    transition: height .2s ease-out;
 }
 
 .bon_tree {
-    margin: auto;
-    margin-bottom: 2em;
-    min-height: 24em;
-    position: relative;
+    position: absolute;
+    display: inline-block;
+    min-height: 20em;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 0px);
+    transition: bottom .2s ease-out;
 }
 
 .bon_tiles-host {
-    height: 5em;
+    min-height: 5em;
     margin: 1em;
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 1.5em;
 }
@@ -308,6 +320,7 @@
     z-index: 2;
 }
 
+.bon_tiles-host .bon_tile.bon_selected::after,
 .bon_tiles-host .bon_tile.bon_selectable::after {
     position: absolute;
     display: inline-block;
@@ -316,13 +329,19 @@
     top: -0.3em;
     width: calc(100% + 0.4em);
     height: calc(100% + 0.2em);
-    cursor: pointer;
     border: dashed .2em rgba(0, 0, 0, .8);
     border-radius: .5em;
     background-color: rgba(255, 255, 255, 0);
 }
+.bon_tiles-host .bon_tile.bon_selectable::after {
+    cursor: pointer;
+}
 .bon_tiles-host .bon_tile.bon_selectable:hover::after {
     background-color: rgba(255, 255, 255, .2);
+}
+.bon_state-client_meditateDiscardTiles .bon_tile.bon_selected::after,
+.bon_state-client_meditateDiscardTiles .bon_tile.bon_selectable::after {
+    border-color: rgba(192, 0, 0, .8);
 }
 
 .bon_tile-placeholder {
@@ -356,10 +375,10 @@
     height: 5em;
     width: 4.25em;
 }
-.bon_tile-wood   { background-position-x:    0; }
-.bon_tile-leaf   { background-position-x: -4.25em; }
-.bon_tile-flower { background-position-x: -8.5em; }
-.bon_tile-fruit  { background-position-x: -12.75em; }
+.bon_tile-1 { background-position-x:    0; }
+.bon_tile-2 { background-position-x: -4.25em; }
+.bon_tile-3 { background-position-x: -8.5em; }
+.bon_tile-4 { background-position-x: -12.75em; }
 
 .bon_tree .bon_tile {
     left: 50%;
@@ -419,9 +438,13 @@
     border: solid .1em rgba(0,0,0,.3);
     border-radius: .5em;
 }
+.bon_mine .bon_seishi-facedown {
+    cursor: pointer;
+}
 .bon_seishi-facedown.bon_empty {
     background: none;
     border: solid .1em transparent;
+    pointer-events: none;
 }
 
 .bon_seishi-facedown-tooltip .bon_card {
@@ -608,6 +631,26 @@
 .bon_log-card-47 { background-position: -16.31em -9.75em; }
 
 
+/* Action Bar - Resource Icons */
+
+.bon_resource {
+    display: inline-block;
+    background-image: url(img/bon_resources.png);
+    background-repeat: no-repeat;
+    background-position-y: 0;
+    background-size: 10.625em 2.5em;
+    height: 2.5em;
+    width: 2.125em;
+    vertical-align: middle;
+    margin: 0 .125em;
+}
+.bon_resource-0 { background-position-x: -8.5em; }
+.bon_resource-1 { background-position-x:    0; }
+.bon_resource-2 { background-position-x: -2.125em; }
+.bon_resource-3 { background-position-x: -4.25em; }
+.bon_resource-4 { background-position-x: -6.375em; }
+
+
 /* Action buttons */
 
 .action-button:has(.bon_button-icon) {
@@ -615,10 +658,10 @@
 }
 .bon_button-icon {
     display: inline-block;
-    background-image: url(img/bon_tiles.png);
+    background-image: url(img/bon_resources.png);
     background-repeat: no-repeat;
     background-position-y: 0;
-    background-size: 8.5em 2.5em;
+    background-size: 10.675em 2.5em;
     height: 2.5em;
     width: 2.125em;
     margin-right: .5em;
@@ -649,6 +692,114 @@
 .bon_log-tile-4 { background-position-x: -6.499em; }
 
 
+/* Hidden cards popup */
+
+#popin_bon_face-down-pile-revealed_contents {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: .5em
+}
+
+
+/* Final Scores */
+
+#bon_final-scores {
+    position: fixed;
+    width: 30em;
+    height: 30em;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-image: url(img/bon_scorepad.png);
+    background-repeat: no-repeat;
+    background-size: cover;
+    border: solid .2em black;
+    box-shadow: .25em .25em .5em rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+#bon_final-scores-table {
+    position: relative;
+    left: 5.55em;
+    top: 1.05em;
+    width: 23.25em;
+    height: 27.75em;
+    display: grid;
+    grid-template-rows: 3fr repeat(6, 5fr);
+    grid-template-columns: repeat(4, minmax(min(5em, 100%), 1fr));
+    gap: 1.125em 0.6em;
+    align-items: center;
+    justify-items: center;
+}
+
+.bon_final-score-header {
+    font-weight: 400;
+    white-space: nowrap;
+    text-overflow: clip;
+    overflow: hidden;
+    text-align: right;
+    font-size: .8em;
+    max-width: 100%;
+}
+.bon_final-score-value {
+    opacity: 0;
+    font-size: 2em;
+}
+
+.bon_final-score-value.bon_winner {
+    position: relative;
+}
+.bon_final-score-value.bon_winner::after {
+    position: absolute;
+    content: ' ';
+    background-image: url(img/bon_circle.png);
+    background-size: 10em 7.8em;
+    background-repeat: no-repeat;
+    width: 2.5em;
+    height: 2.6em;
+    top: -0.6em;
+    left: -0.8em;
+    animation: bon_circle-reveal .3s ease-out forwards;
+    background-position: -5em -7.8em;
+}
+@keyframes bon_circle-reveal {
+    100%     { background-position: -7.5em -5.2em; }
+
+    99.999%  { background-position: -5em -5.2em; }
+    91%      { background-position: -5em -5.2em; }
+
+    90.999%  { background-position: -2.5em -5.2em; }
+    82%      { background-position: -2.5em -5.2em; }
+
+    81.999%  { background-position: 0em  -5.2em; }
+    73%      { background-position: 0em  -5.2em; }
+
+    72.999%  { background-position: -7.5em -2.6em; }
+    64%      { background-position: -7.5em -2.6em; }
+
+    63.999%  { background-position: -5em -2.6em; }
+    55%      { background-position: -5em -2.6em; }
+
+    54.999%  { background-position: -2.5em -2.6em; }
+    46%      { background-position: -2.5em -2.6em; }
+
+    45.999%  { background-position: 0em  -2.6em; }
+    37%      { background-position: 0em  -2.6em; }
+
+    36.999%  { background-position:  -7.5em 0em; }
+    28%      { background-position:  -7.5em 0em; }
+
+    27.999%  { background-position:  -5em 0em; }
+    19%      { background-position:  -5em 0em; }
+
+    18.999%  { background-position:  -2.5em 0em; }
+    10%      { background-position:  -2.5em 0em; }
+
+    9.999%   { background-position:  0em  0em; }
+    0%       { background-position:  0em  0em; }
+}
+
 
 /* Utility */
 
@@ -657,6 +808,7 @@
 }
 
 #bon_last-turn {
+    margin-top: .25em;
     background: rgba(255, 127, 0);
     color: #fff;
 }
@@ -684,4 +836,10 @@
 }
 .action-button:not(.disabled):hover::after {
     background-color: rgba(255, 255, 255, .1);
+}
+
+
+/* Make the title on the popup dialog look better */
+.standard_popin_title {
+    margin-top: 0;
 }

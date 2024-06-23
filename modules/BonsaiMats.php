@@ -57,63 +57,82 @@ class BonsaiMats
         1 => [
             'type' => GOALTYPE_WOOD,
             'size' => 'small',
+            'req' => 8,
             'points' => 5,
         ],
         2 => [
             'type' => GOALTYPE_WOOD,
             'size' => 'med',
+            'req' => 10,
             'points' => 10,
         ],
         3 => [
             'type' => GOALTYPE_WOOD,
             'size' => 'large',
+            'req' => 12,
             'points' => 15,
         ],
+
+        // Note: The leaf goals require ADJACENT leafs!
         4 => [
             'type' => GOALTYPE_LEAF,
             'size' => 'small',
+            'req' => 5,
             'points' => 6,
         ],
         5 => [
             'type' => GOALTYPE_LEAF,
             'size' => 'med',
+            'req' => 7,
             'points' => 9,
         ],
         6 => [
             'type' => GOALTYPE_LEAF,
             'size' => 'large',
+            'req' => 9,
             'points' => 12,
         ],
+
+        // Flower goals require the flowers to protrude past the pot sides (and be on the same side)
         7 => [
             'type' => GOALTYPE_FLOWER,
             'size' => 'small',
+            'req' => 3,
             'points' => 8,
         ],
         8 => [
             'type' => GOALTYPE_FLOWER,
             'size' => 'med',
+            'req' => 4,
             'points' => 12,
         ],
         9 => [
             'type' => GOALTYPE_FLOWER,
             'size' => 'large',
+            'req' => 5,
             'points' => 16,
         ],
+
+        // Fruit goals just require a simple count of fruit
         10 => [
             'type' => GOALTYPE_FRUIT,
             'size' => 'small',
+            'req' => 3,
             'points' => 9,
         ],
         11 => [
             'type' => GOALTYPE_FRUIT,
             'size' => 'med',
+            'req' => 4,
             'points' => 11,
         ],
         12 => [
             'type' => GOALTYPE_FRUIT,
             'size' => 'large',
+            'req' => 5,
             'points' => 13,
         ],
+
         13 => [
             'type' => GOALTYPE_PLACEMENT,
             'size' => 'small',
@@ -148,22 +167,22 @@ class BonsaiMats
         ],
 
         // Growth Cards (7 - 20)
-        [
+        [ // 7 - 10
             'type' => CARDTYPE_GROWTH,
             'resources' => [ TILETYPE_WOOD ],
             'qty' => [ 2, 2, 3, 4 ],
         ],
-        [
+        [ // 11 - 14
             'type' => CARDTYPE_GROWTH,
             'resources' => [ TILETYPE_LEAF ],
             'qty' => [ 2, 2, 4, 4 ],
         ],
-        [
+        [ // 15 - 17
             'type' => CARDTYPE_GROWTH,
             'resources' => [ TILETYPE_FLOWER ],
             'qty' => [ 2, 2, 3, 3 ],
         ],
-        [
+        [ // 18 - 20
             'type' => CARDTYPE_GROWTH,
             'resources' => [ TILETYPE_FRUIT ],
             'qty' => [ 2, 2, 2, 3 ],

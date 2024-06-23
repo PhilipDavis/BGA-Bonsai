@@ -159,6 +159,7 @@ class Bonsai extends Table
         $json = $this->getObjectFromDB("SELECT id, doc FROM game_state LIMIT 1")['doc'];
         $bonsai = BonsaiLogic::fromJson($json);
 
+        // TODO: wire up automatically using reflection
         foreach ($events as $eventName)
             $bonsai->on($eventName, [ $this, 'notify_' . $eventName ]);
 
@@ -215,9 +216,11 @@ class Bonsai extends Table
         $activePlayerId = $this->validateCaller();
 
         $bonsai = $this->loadGameState([ 'tileRemoved', 'tilesAdded', 'goalRenounced', 'goalClaimed' ]);
+        $stateBefore = $bonsai->toJson();
         try
         {
-            $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+            $score = $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+            $this->setPlayerScore($activePlayerId, $score);
         }
         catch (Throwable $e)
         {
@@ -226,7 +229,7 @@ class Bonsai extends Table
                 'Ref #' . $refId . ': cultivate failed',
                 'player: ' . $activePlayerId,
                 'inputs: ' . json_encode([ $removeTiles, $placeTiles, $renounceGoals, $claimGoals ]),
-                'state: ' . $bonsai->toJson(),
+                'state: ' . $stateBefore,
                 'ex:' . $e,
             ]));
             throw new BgaVisibleSystemException("Invalid operation - Ref #" . $refId); // NOI18N
@@ -237,7 +240,7 @@ class Bonsai extends Table
         $this->gamestate->nextState('endTurn');
     }
 
-    function notify_tileRemoved($playerId, $tileId)
+    function notify_tileRemoved($playerId, $tileId, $score)
     {
         $this->notifyAllPlayers('tileRemoved', clienttranslate('${playerName} removes ${_tileId}'), [
             'i18n' => [ '_tileId' ],
@@ -245,11 +248,12 @@ class Bonsai extends Table
             'playerName' => $this->getPlayerNameById($playerId),
             '_tileId' => _('a tile'), // TODO: specify which tile type?
             'tileId' => $tileId,
-            'preserve' => [ 'playerId', 'tileId' ],
+            'score' => $score,
+            'preserve' => [ 'playerId', 'tileId', 'score' ],
         ]);
     }
 
-    function notify_tilesAdded($playerId, $placeTiles)
+    function notify_tilesAdded($playerId, $placeTiles, $score)
     {
         $msg =
             count($placeTiles) == 1
@@ -261,7 +265,8 @@ class Bonsai extends Table
             'playerName' => $this->getPlayerNameById($playerId),
             'n' => count($placeTiles),
             'tiles' => $placeTiles,
-            'preserve' => [ 'playerId', 'tiles' ],
+            'score' => $score,
+            'preserve' => [ 'playerId', 'tiles', 'score' ],
         ]);
     }
 
@@ -277,7 +282,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_goalClaimed($playerId, $goalId)
+    function notify_goalClaimed($playerId, $goalId, $score)
     {
         $this->notifyAllPlayers('goalClaimed', clienttranslate('${playerName} claims ${_goalId}'), [
             'i18n' => [ '_goalId' ],
@@ -285,7 +290,8 @@ class Bonsai extends Table
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
             'goalId' => $goalId,
-            'preserve' => [ 'playerId', 'goalId' ],
+            'score' => $score,
+            'preserve' => [ 'playerId', 'goalId', 'score' ],
         ]);
     }
 
@@ -293,10 +299,12 @@ class Bonsai extends Table
     {
         $activePlayerId = $this->validateCaller();
 
-        $bonsai = $this->loadGameState([ 'cardTaken', 'capacityIncreased', 'tilesReceived', 'cardRevealed', 'lastRound' ]);
+        $bonsai = $this->loadGameState([ 'cardTaken', 'capacityIncreased', 'tilesReceived', 'tilesAdded', 'tilesDiscarded', 'cardRevealed', 'lastRound' ]);
+        $stateBefore = $bonsai->toJson();
         try
         {
-            $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+            $score = $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+            $this->setPlayerScore($activePlayerId, $score);
         }
         catch (Throwable $e)
         {
@@ -305,7 +313,7 @@ class Bonsai extends Table
                 'Ref #' . $refId . ': meditate failed',
                 'player: ' . $activePlayerId,
                 'inputs: ' . json_encode([ $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles ]),
-                'state: ' . $bonsai->toJson(),
+                'state: ' . $stateBefore,
                 'ex:' . $e,
             ]));
             throw new BgaVisibleSystemException("Invalid operation - Ref #" . $refId); // NOI18N
@@ -397,10 +405,25 @@ class Bonsai extends Table
 
     function stEndTurn()
     {
-        // TODO: is the draw pile empty? each player gets one more turn
-
         $gameTurn = $this->getGameStateValue('gameTurn');
         $this->setGameStateValue('gameTurn', $gameTurn + 1);
+
+        $bonsai = $this->loadGameState();
+        if ($bonsai->getGameProgression() >= 100)
+        {
+            $scores = $bonsai->getScores();
+
+            foreach ($scores as $playerId => $score)
+                $this->setPlayerScore($playerId, $score['total']);
+
+            $this->notifyAllPlayers('finalScore', '', [
+                'scores' => $scores,
+                'preserve' => [ 'scores' ],
+            ]);
+
+            $this->gamestate->nextState('gameOver');
+            return;
+        }
 
         $this->activeNextPlayer();
         $this->gamestate->nextState('nextTurn');
