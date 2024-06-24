@@ -104,6 +104,117 @@ define([
         { type: CardType.Parchment, bonusType: 'cards', card: CardType.Master, points: 2 },
     ];
 
+    const GoalType = {
+        TotalWood: 1,
+        AdjacentLeafs: 2,
+        TotalFruit: 3,
+        AlignedFlowers: 4,
+        Placement: 5,
+    };
+
+    const GoalSize = {
+        Small: 0,
+        Medium: 1,
+        Large: 2,
+    };
+
+    const Goals = {
+        '1': {
+            type: GoalType.TotalWood,
+            size: GoalSize.Small,
+            req: 8,
+            points: 5,
+        },
+        2: {
+            type: GoalType.TotalWood,
+            size: GoalSize.Medium,
+            req: 10,
+            points: 10,
+        },
+        3: {
+            type: GoalType.TotalWood,
+            size: GoalSize.Large,
+            req: 12,
+            points: 15,
+        },
+
+        // Note: The leaf goals require ADJACENT leafs!
+        4: {
+            type: GoalType.AdjacentLeafs,
+            size: GoalSize.Small,
+            req: 5,
+            points: 6,
+        },
+        5: {
+            type: GoalType.AdjacentLeafs,
+            size: GoalSize.Medium,
+            req: 7,
+            points: 9,
+        },
+        6: {
+            type: GoalType.AdjacentLeafs,
+            size: GoalSize.Large,
+            req: 9,
+            points: 12,
+        },
+
+        // Fruit goals just require a simple count of fruit
+        7: {
+            type: GoalType.TotalFruit,
+            size: GoalSize.Small,
+            req: 3,
+            points: 9,
+        },
+        8: {
+            type: GoalType.TotalFruit,
+            size: GoalSize.Medium,
+            req: 4,
+            points: 11,
+        },
+        9: {
+            type: GoalType.TotalFruit,
+            size: GoalSize.Large,
+            req: 5,
+            points: 13,
+        },
+
+        // Flower goals require the flowers to protrude past the pot sides (and be on the same side)
+        10: {
+            type: GoalType.AlignedFlowers,
+            size: GoalSize.Small,
+            req: 3,
+            points: 8,
+        },
+        11: {
+            type: GoalType.AlignedFlowers,
+            size: GoalSize.Medium,
+            req: 4,
+            points: 12,
+        },
+        12: {
+            type: GoalType.AlignedFlowers,
+            size: GoalSize.Large,
+            req: 5,
+            points: 16,
+        },
+
+        13: { // TODO: goal logic for these three
+            type: GoalType.Placement,
+            size: GoalSize.Small,
+            points: 7,
+        },
+        14: {
+            type: GoalType.Placement,
+            size: GoalSize.Medium,
+            points: 10,
+        },
+        15: {
+            type: GoalType.Placement,
+            size: GoalSize.Large,
+            points: 14,
+        },
+    };
+
     
     class BonsaiLogic {
         constructor(data, myPlayerId) {
@@ -128,6 +239,7 @@ define([
         placeTile(playerId, type, x, y, r) {
             const tileId = `${playerId}-${x}-${y}`;
             this.trees[playerId].placeTile(type, x, y, r);
+            this.players[playerId].played.push([ type, x, y, r ]);
             this.placedThisTurn[type]++;
             return tileId;
         }
@@ -137,6 +249,7 @@ define([
             // Don't simply subtract because we also remove a tile during
             // a pruning operation which doesn't affect the turn caps.
             this.placedThisTurn[type] = Math.max(0, this.placedThisTurn[type] - 1);
+            this.players[playerId].played = this.players[playerId].played.filter(move => move[1] !== x && move[2] !== y);
         }
 
         takeCardFromSlot(playerId, slot) {
@@ -188,11 +301,6 @@ define([
             else {
                 player.faceUp = player.faceUp.filter(c => c !== cardId);
             }
-        }
-
-        get eligibleGoals() {
-            // TODO: return goals available to the current player, sorted by colour and then smallest to largest
-            return []; // KILL
         }
 
         get tilesOverCapacity() {
@@ -317,6 +425,171 @@ define([
             return Math.max(0, tileCount - capacity);
         }
         
+        claimGoal(playerId, goalId) {
+            this.data.players[playerId].claimed.push(goalId);
+        }
+
+        unclaimGoal(playerId, goalId) {
+            const player = this.data.players[playerId];
+            player.claimed = player.claimed.filter(g => g !== goalId);
+        }
+        
+        renounceGoal(playerId, goalId) {
+            this.data.players[playerId].renounced.push(goalId);
+        }
+
+        unrenounceGoal(playerId, goalId) {
+            const player = this.data.players[playerId];
+            player.renounced = player.renounced.filter(g => g !== goalId);
+        }
+
+        get allGoals() {
+            const allGoals = [ ...this.data.goalTiles ];
+            for (const { claimed } of Object.values(this.data.players)) {
+                allGoals.push(...claimed);
+            }
+            allGoals.sort();
+            return allGoals;
+        }
+
+        getGoalStatuses() {
+            return this.allGoals.map(goalId => this.getGoalStatus(goalId));
+        }
+
+        getGoalStatus(goalId) {
+            if (this.data.goalTiles.indexOf(goalId) === -1) {
+                for (const [ playerId, { claimed } ] of Object.entries(this.data.players)) {
+                    if (claimed.indexOf(goalId) === -1) continue;
+                    if (playerId == this.myPlayerId) {
+                        return {
+                            goalId,
+                            status: this.toolTipText['bon_goal-claimed'],
+                        };
+                    }
+                    else {
+                        return {
+                            goalId,
+                            status: this.toolTipText['bon_goal-opponent'],
+                        };
+                    }
+                }
+            }
+
+            // TODO: if qualify show claimed otherwise calculate amount short from the requirement
+
+            return {
+                goalId,
+                status: '',
+            };
+        }
+
+        get eligibleGoals() {
+            const { claimed, renounced, played } = this.data.players[this.myPlayerId];
+            let { goalTiles } = this.data;
+            if (!goalTiles.length) return [];
+
+            // Remove goals that this player has already renounced
+            goalTiles = goalTiles.filter(g => renounced.indexOf(g) === -1);
+
+            // Remove goals that are the same colour (type) as
+            // those already claimed by this player
+            goalTiles = goalTiles.filter(g => {
+                const { type } = Goals[g];
+                return !claimed.some(g => Goals[g].type === type);
+            });
+
+            // Remove goals that have requirements unmet by this player
+            goalTiles = goalTiles.filter(g => {
+                const { type, req, size } = Goals[g];
+                switch (type) {
+                    case GoalType.TotalWood:
+                        return played.reduce((sum, move) => sum + (move[0] === TileType.Wood ? 1 : 0), 0) >= req;
+
+                    case GoalType.AdjacentLeafs:
+                        const leafs = played.filter(move => move[0] === TileType.Leaf);
+                        return this.countAdjacentLeafs(leafs) >= req;
+
+                    case GoalType.TotalFruit:
+                        return played.reduce((sum, move) => sum + (move[0] === TileType.Fruit ? 1 : 0), 0) >= req;
+                        
+                    case GoalType.AlignedFlowers:
+                        const flowers = played.filter(move => move[0] === TileType.Flower);
+                        const leftFlowers = flowers.filter(move => this.getProtrudingDirection(move) === -1).filter(d => d);
+                        const rightFlowers = flowers.filter(move => this.getProtrudingDirection(move) === 1).filter(d => d);
+                        return leftFlowers.length && rightFlowers.length;
+
+                    case GoalType.Placement:
+                        switch (size) {
+                            case GoalSize.Small:
+                                return played.some(move => this.getProtrudingDirection(move));
+
+                            case GoalSize.Medium:
+                                const protrudingSides = played.map(move => this.getProtrudingDirection(move)).filter(d => d);
+                                return protrudingSides.indexOf(-1) >= 0 && protrudingSides.indexOf(1) >= 0;
+
+                            case GoalSize.Large:
+                                const quadrants = played.map(move => this.getPlacementQuadrant(move)).filter(q => q);
+                                return (
+                                    (quadrants.some(q => q === 1) && quadrants.some(q => q === 3)) ||
+                                    (quadrants.some(q => q === 2) && quadrants.some(q => q === 4))
+                                );
+                        }
+                        break;
+                }
+            });
+
+            return goalTiles.sort();
+        }
+
+        getProtrudingDirection(move) {
+            const [ tileType, x, y, r ] = move;
+            if (y % 2 && x > 3) return 1;
+            if (y % 2 && x < -1) return -1;
+            if (y % 2 == 0 && x >= 3) return 1;
+            if (y % 2 == 0 && x < -1) return -1; 
+        }
+
+        getPlacementQuadrant(move) {
+            const [ tileType, x, y, r ] = move;
+            const side = this.getProtrudingDirection(move);
+
+            const isBelow = y <= -2;
+            if (side > 0) {
+                return isBelow ? 4 : 1;
+            }
+            else if (side < 0) {
+                return isBelow ? 3 : 2;
+            }
+            return null; // We only want to consider protruding outside the pot
+        }
+
+        countAdjacentLeafs(leafMoves) {
+            let result = 0;
+            const visited = {};
+            const stack = [];
+            const leafKeys = leafMoves.map(([ tt, x, y, r ]) => makeKey(x, y));
+
+            while (leafKeys.length) {
+                const leafKey = leafKeys.shift();
+                stack.push(leafKey);
+
+                let count = 0;
+                while (stack.length) {
+                    const leafKey = stack.pop();
+                    
+                    if (visited[leafKey]) continue;
+                    visited[leafKey] = true;
+                    count++;
+
+                    const adjacentKeys = Object.values(this.trees[this.myPlayerId].getAdjacentKeys(leafKey));
+                    const adjacentLeafKeys = adjacentKeys.filter(key => leafKeys.indexOf(key) >= 0); 
+                    stack.push(...adjacentLeafKeys);
+                }
+                result = Math.max(result, count);
+            }
+            return result;
+        }
+
         get board() {
             return this.data.board;
         }
@@ -345,6 +618,9 @@ define([
         parseKey,
         Cards,
         CardType, // TODO: verify if we need all these exports
+        Goals,
+        GoalType,
+        GoalSize,
         TileType,
         TileTypeName,
         ResourceType,

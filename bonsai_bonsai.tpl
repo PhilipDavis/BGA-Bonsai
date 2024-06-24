@@ -12,8 +12,7 @@
 
 
 <div id="bon_surface">
-    <div id="bon_goals">
-    </div> 
+    <div id="bon_goals"></div> 
     <div id="bon_board">
         <div id="bon_deck"></div>
         <div id="bon_slot-0" class="bon_slot"></div>
@@ -66,6 +65,37 @@ const bonsai_Templates = {
                 '<div id="bon_seishi-lhs-${PID}" class="bon_seishi-lhs"></div>' +
                 '<div id="bon_seishi-rhs-${PID}" class="bon_seishi-rhs"></div>' +
             '</div>' +
+        '</div>',
+
+    goalTilePlaceholder:
+        '<div id="bon_goal-placeholder-${GOAL_ID}" ' +
+            'class="bon_goal-placeholder" ' +
+        '></div>',
+
+    goalSet:
+        '<div id="bon_goal-set-${TYPE}" ' +
+            'class="bon_goal-set" ' +
+        '></div>',
+
+    goalTile:
+        '<div id="bon_goal-${GOAL_ID}" ' +
+            'class="bon_goal bon_goal-${GOAL_ID}" ' +
+        '></div>',
+
+    goalTooltip:
+        '<div class="bon_tooltip">' +
+            '<div class="bon_tooltip-title">' +
+                '${TITLE}' +
+            '</div>' +
+            '<p class="bon_tooltip-text">' +
+                '${TEXT}' +
+            '</p>' +
+            '<p class="bon_tooltip-text">' +
+                '${POINTS}' +
+            '</p>' +
+            '<p class="bon_tooltip-warning">' +
+                '${WARN}' +
+            '</p>' +
         '</div>',
 
     tile:

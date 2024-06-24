@@ -20,13 +20,16 @@ define([
 function (
     dojo,
     declare,
-    { install, formatBlock, createFromTemplate, invokeServerActionAsync },
+    { install, formatBlock, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
     { transitionInAsync, transitionOutAsync },
-    { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, TileType, TileTypeName, Direction },
+    { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalType, GoalSize, TileType, TileTypeName, Direction },
 ) {
     const BgaGameId = 'bonsai';
 
     let bonsai; // BonsaiLogic
+
+    // How many milliseconds to hover before showing a tooltip
+    const ToolTipDelay = 500;
 
     const TileTypeLabel = {};
 
@@ -237,6 +240,7 @@ function (
         }
     }
 
+    // KILL?
     class RotateTileAction extends Action {
         constructor(playerId, divId, r) {
             super();
@@ -497,11 +501,25 @@ function (
         }
 
         async doAsync() {
-            // TODO
+            if (this.playerId == gameui.myPlayerId) {
+                const divId = `bon_goal-${this.goalId}`;
+                const goalDiv = document.getElementById(divId);
+                goalDiv.classList.add('bon_ineligible');
+                goalDiv.classList.remove('bon_selectable');
+            }
+
+            bonsai.renounceGoal(this.playerId, this.goalId);
         }
 
         async undoAsync() {
-            // TODO
+            if (this.playerId == gameui.myPlayerId) {
+                const divId = `bon_goal-${this.goalId}`;
+                const goalDiv = document.getElementById(divId);
+                goalDiv.classList.remove('bon_ineligible');
+                goalDiv.classList.add('bon_selectable');
+            }
+
+            bonsai.unrenounceGoal(this.playerId, this.goalId);
         }
 
         isCheckpoint() { return false; }
@@ -525,11 +543,25 @@ function (
         }
 
         async doAsync() {
-            // TODO
+            const divId = `bon_goal-${this.goalId}`;
+            const goalDiv = document.getElementById(divId);
+            goalDiv.classList.add('bon_hidden');
+            goalDiv.classList.remove('bon_selectable');
+
+            // TODO: animate goal tile to the player's summary board / play surface
+
+            bonsai.claimGoal(this.playerId, this.goalId);
         }
 
         async undoAsync() {
-            // TODO
+            const divId = `bon_goal-${this.goalId}`;
+            const goalDiv = document.getElementById(divId);
+            goalDiv.classList.remove('bon_hidden');
+            goalDiv.classList.add('bon_selectable');
+
+            // TODO: animate goal tile back to the shared area            
+
+            bonsai.unclaimGoal(this.playerId, this.goalId);
         }
 
         isCheckpoint() { return false; }
@@ -681,13 +713,39 @@ function (
             window.bonsai = bonsai; // For convenience during debugging
 
             this.toolTipText = {
-                // TODO
+                'bon_goal-set-1-title': __('Bujin-ji Style Goal'),
+                'bon_goal-set-2-title': __('Moyogi Style Goal'),
+                'bon_goal-set-3-title': __('Chokkan Style Goal'),
+                'bon_goal-set-4-title': __('Shakan Style Goal'),
+                'bon_goal-set-5-title': __('Kengai Style Goal'),
+                'bon_goal-set-1': __('Your bonsai has *${n}* wood tiles, including the starting bud tile.'),
+                'bon_goal-set-2': __('Your bonsai has *${n}* leaf tiles, adjacent to one another.'),
+                'bon_goal-set-3': __('Your bonsai has *${n}* fruit tiles.'),
+                'bon_goal-set-4': __('Your bonsai has *${n}* flower tiles that protrude from the *same side* of the Pot (it does not matter if it\'s the right or the left side).'),
+                'bon_goal-tile-13': __('Your bonsai has a tile which *protrudes* out of the pot (on the side shown by the symbol).'),
+                'bon_goal-tile-14': __('Your bonsai has tiles *protruding* from *both sides* of the pot.'),
+                'bon_goal-tile-15': __('Your bonsai has a tile *protruding* out of the pot on *one side*, and another tile *below* the pot on the *other side* (the specific sides do not matter).'),
+                'bon_goal-warning': __('You may only claim *one Goal tile per color*'),
+                'bon_goal-renounced': __('You have *renounced* this goal'),
+                'bon_goal-eligible': __('You may *claim* this goal'),
+                'bon_goal-opponent': __('Your opponent claimed this goal'),
+                'bon_goal-set-1-short': __('You need *${n}* more wood tiles to qualify'),
+                'bon_goal-set-2-short': __('You need *${n}* more adjacent leaf tiles to qualify'),
+                'bon_goal-set-3-short': __('You need *${n}* more fruit tiles to qualify'),
+                'bon_goal-set-4-short': __('You need *${n}* more flowers on the same side to qualify'),
+                'bon_goal-set-5-short': __('You need *${n}* more criteria to qualify'),
             };
 
             TileTypeLabel[TileType.Wood] = _('Wood');
             TileTypeLabel[TileType.Leaf] = _('Leaf');
             TileTypeLabel[TileType.Flower] = _('Flower');
             TileTypeLabel[TileType.Fruit] = _('Fruit');
+
+            // Set up the goals
+            for (const goalId of bonsai.allGoals) {
+                const claimed = bonsai.data.goalTiles.indexOf(goalId) < 0;
+                this.createGoalTilePlaceholder(goalId, claimed);
+            }
 
             // Setting up player boards
             this.setupPlayer(this.myPlayerId, bonsai.players[this.myPlayerId], scores[this.myPlayerId].total);
@@ -719,6 +777,8 @@ function (
                 if (!target.classList.contains('bon_selectable')) return;
                 this.onClickInventoryTile(target.id, parseInt(target.dataset.type, 10));
             });
+
+            this.updateGoalTooltips();
 
             this.setupNotifications();
         },
@@ -772,7 +832,7 @@ function (
             // Add the tree tiles of this user
             const playerTiles = player.played;
             for (const [ type, x, y, r ] of playerTiles) {
-                bonsai.placeTile(playerId, type, x, y, r);
+                bonsai.trees[playerId].placeTile(type, x, y, r);
                 if (x != 0 || y != 0) {
                     this.createTileInTree(playerId, type, x, y, r);
                 }
@@ -829,6 +889,8 @@ function (
             if (playerId == this.myPlayerId) {
                 faceDownPileDiv.addEventListener('click', () => this.onClickFaceDownPile());
             }
+
+            // TODO: add claimed goals to the player board
         },
 
         onClickFaceDownPile() {
@@ -869,6 +931,67 @@ function (
                 CARD_ID: cardId,
                 DOWN: faceUp ? '' : 'bon_card-face-down',
             }, divId);
+        },
+
+        createGoalSet(type) {
+            const divId = `bon_goal-set-${type}`;
+            if (!document.getElementById(divId)) {
+                createFromTemplate('bonsai_Templates.goalSet', {
+                    TYPE: type,
+                }, 'bon_goals');
+            }
+            return divId;
+        },
+
+        createGoalTilePlaceholder(goalId, claimed) {
+            const { type, req, points } = Goals[goalId];
+
+            const setId = this.createGoalSet(type);
+
+            createFromTemplate('bonsai_Templates.goalTilePlaceholder', {
+                GOAL_ID: goalId,
+            }, setId);
+            const placeholderId = `bon_goal-placeholder-${goalId}`;
+
+            if (!claimed) {
+                createFromTemplate('bonsai_Templates.goalTile', {
+                    GOAL_ID: goalId,
+                }, placeholderId);
+                const divId = `bon_goal-${goalId}`;
+                const goalDiv = document.getElementById(divId);
+                goalDiv.addEventListener('click', () => this.onClickGoal(goalId));
+            }
+        },
+
+        updateGoalTooltips() {
+            for (const { goalId, status, short } of bonsai.getGoalStatuses()) {
+                const { type, req, points } = Goals[goalId];
+                const setId = this.createGoalSet(type);
+                
+                const divId = `bon_goal-${goalId}`;
+                const goalDiv = document.getElementById(divId);
+                if (!goalDiv) continue;
+
+                const html = formatBlock('bonsai_Templates.goalTooltip', {
+                    GOAL_ID: goalId,
+                    TITLE: stringFromTemplate(this.toolTipText[`${setId}-title`]),
+                    TEXT: stringFromTemplate(this.toolTipText[divId] || this.toolTipText[setId], {
+                        n: req,
+                    }),
+                    WARN: this.toolTipText['bon_goal-warning'],
+                    STATUS: stringFromTemplate(this.toolTipText[status], {
+                        n: short,
+                    }),
+                    POINTS: stringFromTemplate(__('Value: *${n}* Points'), {
+                        n: points,
+                    }), 
+                });
+
+                // TODO: update the tooltip as a player places tiles
+                // TODO: show how close they are to being eligible; or if they've renounced it, etc.
+
+                this.addTooltipHtml(divId, html, ToolTipDelay);
+            }
         },
 
         createTile(playerId, tileType, parentDivOrId) {
@@ -1139,6 +1262,13 @@ function (
                 case 'client_meditateConfirm':
                     this.addActionButton('bon_button-meditate-confirm-end-turn', _('End Turn'), () => this.onClickMeditateEndTurn());
                     this.addActionButton(`bon_button-meditate-cancel`, _('Cancel'), () => this.onClickCancelMeditate(), null, false, 'red'); 
+                    break;
+
+                case 'client_claimOrRenounceGoal':
+                    // TODO: images on the buttons
+                    this.addActionButton('bon_button-claim-goal', _('Claim'), () => this.onClickClaimGoal(true));
+                    this.addActionButton('bon_button-renounce-goal', _('Renounce'), () => this.onClickClaimGoal(false)); 
+                    this.addActionButton(`bon_button-undo-goal`, _('Undo'), () => this.onClickUndo()); 
                     break;
             }
         },
@@ -1582,14 +1712,18 @@ function (
             await this.advanceWorkflow();
         },
 
-        /* KILL
-        async onClickUndo() {
+        async onClickGoal(goalId) {
             if (!this.isCurrentPlayerActive()) return;
-            console.log('onClickUndo()');
-            await this.actionStack.undoAsync();
-            // TODO: how to advance the workflow?
+            if (!this.checkAction('cultivate')) return;
+            if (this.isClientLocked()) return;
+            const goalDiv = document.getElementById(`bon_goal-${goalId}`);
+            if (!goalDiv.classList.contains('bon_selectable')) return;
+
+            console.log(`onClickGoal(${goalId}`);
+
+            this.clientStateArgs.claimed = true;
+            await this.advanceWorkflow();
         },
-        */
 
         async onClickCancelCultivate() {
             if (!this.isCurrentPlayerActive()) return;
@@ -1623,6 +1757,7 @@ function (
             await this.advanceWorkflow();
         },
 
+        // TODO: consolidate all the OnClick...Cancel
         async onClickCancelLocation() {
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickCancelLocation()');
@@ -1634,22 +1769,27 @@ function (
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickCultivateEndTurn()`);
 
-            // TODO: check for goal eligibility
-            // TODO: go to goal state per each qualifying goal type
-
             const data = this.actionStack.apply();
-            const remove = data.remove?.join(',');
-            const place = data.place?.flatMap(move => move).join(',');
-            const renounce = ''; // TODO
-            const claim = ''; // TODO
+            let {
+                remove,
+                place,
+                renounce,
+                claim,
+            } = data;
+
+            remove = remove && [ remove ].flatMap(g => g).join();
+            place = place?.flatMap(m => m).join();
+            renounce = renounce && [ renounce ].flatMap(g => g).join();
+            claim = claim && [ claim ].flatMap(g => g).join();
             try {
                 await invokeServerActionAsync('cultivate', { remove, place, renounce, claim });
             }
-            catch (err) {}
-            this.clientStateArgs.alreadyPlaced = false;
-            this.actionStack.clear();
+            catch (err) {
+                return;
+            }
             this.advanceWorkflow();
-    },
+            this.actionStack.clear();
+        },
 
         * cultivateWorkflow({ skipSelectPrompt = false } = {}) {
             // TODO: check to see if there are no possible moves (allow player to remove a tile... see rule book)
@@ -1664,9 +1804,6 @@ function (
                 skipSelectPrompt = false; // Only allow skipping the first time in the loop
 
                 const seishiResources = bonsai.getCanPlayResourceFilter();
-
-                console.log('canPlay: ', seishiResources); // KILL
-
                 const placed = yield * this.placeTileWorkflow(prompt, seishiResources);
 
                 if (this.clientStateArgs.canceled) return false;
@@ -1679,8 +1816,6 @@ function (
                 }
                 if (!placed) break;
             }
-
-            yield * this.claimRenounceGoalsWorkflow();
 
             // TODO: allow player to confirm / cancel (unless preference says not to)
             yield new SetClientState('client_cultivateConfirm', _('${you} must confirm your turn'));
@@ -1755,8 +1890,6 @@ function (
                         yield new UndoLastAction();
                         continue;
                     }
-
-                    yield * this.claimRenounceGoalsWorkflow();
                     break;
                 }
             }
@@ -1865,6 +1998,11 @@ function (
                 // Animate the placement and return the tile to the parent workflow
                 yield new PlaceTileAction(this.myPlayerId, tileDivId, tileType, locX, locY, locR);
                 this.clientStateArgs.alreadyPlaced = true;
+
+                // Check to see if the player is able to claim/renounce any goals
+                // as a result of having placed this tile.
+                yield * this.claimRenounceGoalsWorkflow();
+
                 return tileType;
             }
         },
@@ -1878,7 +2016,17 @@ function (
             // Check if eligible to renounce / claim goals
             while (bonsai.eligibleGoals.length) {
                 const goalId = bonsai.eligibleGoals[0];
-                yield new SetClientState('client_meditateClaimOrRenounce', _('${you} must claim or renounce this goal'));
+                const goalDiv = document.getElementById(`bon_goal-${goalId}`);
+                goalDiv.classList.add('bon_selectable');
+
+                const goalsDiv = document.getElementById('bon_goals');
+                goalsDiv.scrollIntoView({ block: 'end', inline: 'center', behavior: 'smooth' });
+
+                yield new SetClientState('client_claimOrRenounceGoal', _('${you} must claim the goal or renounce it'));
+
+                if (this.clientStateArgs.undo) {
+                    // TODO
+                }
 
                 const { claimed } = this.clientStateArgs;
                 if (claimed) {
@@ -2013,6 +2161,7 @@ function (
             catch (err) {
                 return;
             }
+            this.advanceWorkflow();
             this.actionStack.clear();
         },
 
@@ -2021,6 +2170,12 @@ function (
             delete this.clientStateArgs.workflow;
             await this.actionStack.undoAllAsync();
             this.restoreServerGameState();
+        },
+
+        async onClickClaimGoal(claimed) {
+            if (!this.isCurrentPlayerActive()) return;
+            this.clientStateArgs.claimed = claimed;
+            await this.advanceWorkflow();
         },
 
         
@@ -2088,12 +2243,17 @@ function (
         notify_goalRenounced({ playerId, goalId }) {
             if (playerId == this.player_id) return;
 
-            // TODO
+            bonsai.renounceGoal(playerId, goalId);
+
+            // TODO: maybe show on the player summary board?
         },
 
         notify_goalClaimed({ playerId, goalId, score }) {
             if (playerId != this.player_id) {
-                // TODO
+                // TODO: animate to the player surface
+                // TODO: create copy on the player summary board
+
+                bonsai.claimGoal(playerId, goalId);
             }
 
             // Update player score
@@ -2116,6 +2276,7 @@ function (
             // Remove any cards that were on the facedown pile
             const faceDownDiv = document.getElementById(`bon_seishi-facedown-${playerId}`);
             faceDownDiv.innerHTML = '';
+            faceDownDiv.classList.remove('bon_empty');
         },
 
         async notify_capacityIncreased({ playerId, delta }) {
@@ -2131,11 +2292,11 @@ function (
             bonsai.data.finalTurns = bonsai.data.order.length;
         },
 
-        async notify_tilesDiscarded({ playerId, tiles }) {
+        async notify_tilesDiscarded({ playerId, tileType: tileTypes }) {
             if (playerId == this.player_id) return;
 
             const adjustments =
-                Object.values(tiles)
+                Object.values(tileTypes)
                     .reduce((obj, tileType) => ({ ...obj, [tileType]: (obj[tileType] || 0) - 1 }), {});
 
             // Fade out the discarded tiles

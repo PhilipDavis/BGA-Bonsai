@@ -85,7 +85,7 @@
     background-repeat: no-repeat;
     border: solid .1em rgba(0,0,0,.3);
     border-radius: .75em;
-    margin: 1em auto 0 auto;
+    margin: 2em auto 0 auto;
     clear: both;
     box-shadow: 0.2em 0.2em 0.3em rgba(0, 0, 0, .2);
 }
@@ -461,9 +461,9 @@
 .bon_seishi-lhs > * {
     display: inline;
     float: right;
-    margin-right: -3em;
+    margin-right: -3.3em;
     position: relative;
-    right: 3em;
+    right: 3.3em;
 }
 
 .bon_seishi-rhs {
@@ -490,39 +490,115 @@
 
 /* Goals */
 
+#bon_goals {
+    margin-top: 1em;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 2em;
+}
+.bon_goal-set {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: .5em;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.bon_goal-placeholder {
+    height: 4em;
+}
+
 .bon_goal {
+    position: relative;
     display: inline-block;
     background-image: url(img/bon_goals.png);
-    background-repeat: none;
-    background-size: 42.44em 40em;
+    background-repeat: no-repeat;
+    background-size: 21.22em 20em;
+    height: 4em;
 }
-.bon_goal-l {
-    width: 17.017em;
+.bon_goal.bon_ineligible  {
+    filter: brightness(90%) saturate(50%);
+    opacity: .66;
+}
+
+#bon_goals .bon_goal.bon_selectable::after {
+    position: absolute;
+    display: inline-block;
+    content: ' ';
+    left: -0.4em;
+    top: -0.3em;
+    width: calc(100% + 0.3em);
+    height: calc(100% + 0.25em);
+    border: dashed .2em rgba(0, 0, 0, .8);
+    border-radius: .5em;
+    background-color: rgba(255, 255, 255, 0);
+}
+#bon_goals .bon_goal.bon_selectable::after {
+    cursor: pointer;
+}
+#bon_goals .bon_goal.bon_selectable:hover::after {
+    background-color: rgba(255, 255, 255, .2);
+}
+
+#bon_goals .bon_goal-3,
+#bon_goals .bon_goal-6,
+#bon_goals .bon_goal-9,
+#bon_goals .bon_goal-12,
+#bon_goals .bon_goal-15 {
+    width: 8.5085em;
     background-position-x: 0;
 }
-.bon_goal-m {
-    width: 13.406em;
-    background-position-x: -17.017em;
+#bon_goals .bon_goal-2,
+#bon_goals .bon_goal-5,
+#bon_goals .bon_goal-8,
+#bon_goals .bon_goal-11,
+#bon_goals .bon_goal-14 {
+    width: 6.703em;
+    background-position-x: -8.5085em;
 }
-.bon_goal-s {
-    width: 12.017em;
-    background-position-x: -30.423em;
+#bon_goals .bon_goal-1,
+#bon_goals .bon_goal-4,
+#bon_goals .bon_goal-7,
+#bon_goals .bon_goal-10,
+#bon_goals .bon_goal-13 {
+    width: 6.0085em;
+    background-position-x: -15.2115em;
 }
-#bon_goal-1  { background-position: 0em 0em; }
-#bon_goal-2  { background-position: -17.017em 0em; }
-#bon_goal-3  { background-position: -30.423em 0em; }
-#bon_goal-4  { background-position: 0em -8em; }
-#bon_goal-5  { background-position: -17.017em -8em; }
-#bon_goal-6  { background-position: -30.423em -8em; }
-#bon_goal-7  { background-position: 0em -16em; }
-#bon_goal-8  { background-position: -17.017em -16em; }
-#bon_goal-9  { background-position: -30.423em -16em; }
-#bon_goal-10 { background-position: 0em -24em; }
-#bon_goal-11 { background-position: -17.017em -24em; }
-#bon_goal-12 { background-position: -30.423em -24em; }
-#bon_goal-13 { background-position: 0em -32em; }
-#bon_goal-14 { background-position: -17.017em -32em; }
-#bon_goal-15 { background-position: -30.423em -32em; }
+#bon_goals .bon_goal-3  { background-position: 0em 0em; }
+#bon_goals .bon_goal-2  { background-position: -8.5085em 0em; }
+#bon_goals .bon_goal-1  { background-position: -15.2115em 0em; }
+#bon_goals .bon_goal-6  { background-position: 0em -4em; }
+#bon_goals .bon_goal-5  { background-position: -8.5085em -4em; }
+#bon_goals .bon_goal-4  { background-position: -15.2115em -4em; }
+#bon_goals .bon_goal-9  { background-position: 0em -8em; }
+#bon_goals .bon_goal-8  { background-position: -8.5085em -8em; }
+#bon_goals .bon_goal-7  { background-position: -15.2115em -8em; }
+#bon_goals .bon_goal-12 { background-position: 0em -12em; }
+#bon_goals .bon_goal-11 { background-position: -8.5085em -12em; }
+#bon_goals .bon_goal-10 { background-position: -15.2115em -12em; }
+#bon_goals .bon_goal-15 { background-position: 0em -16em; }
+#bon_goals .bon_goal-14 { background-position: -8.5085em -16em; }
+#bon_goals .bon_goal-13 { background-position: -15.2115em -16em; }
+
+.bon_tooltip {
+    padding: .5em;
+}
+.bon_tooltip-title {
+    font-size: 1.25em;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    border-bottom: solid .1em rgba(0, 0, 0, .3);
+    padding-bottom: 0.2em;
+}
+.bon_tooltip-text {
+    margin: 1em 0;
+}
+.bon_tooltip-warning {
+    margin-top: 1.5em;
+    font-size: .9em;
+}
 
 
 /* Log */

@@ -174,6 +174,7 @@ define([], function () {
         install,
         formatBlock,
         createFromTemplate,
+        stringFromTemplate,
         invokeServerActionAsync,
     };
 });

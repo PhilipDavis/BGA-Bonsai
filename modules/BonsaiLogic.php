@@ -98,7 +98,7 @@ class BonsaiLogic extends EventEmitter
         $selectedGoalTileTypes = [];
         if ($useGoalTiles)
         {
-            $goalTileTypes = array_keys(BonsaiMats::$GoalTileTypes);
+            $goalTileTypes = array_values(BonsaiMats::$GoalTileTypes);
             shuffle($goalTileTypes);
 
             array_push($selectedGoalTileTypes, array_shift($goalTileTypes));
@@ -114,6 +114,10 @@ class BonsaiLogic extends EventEmitter
             if (count((array)$players) <= 2 && $goalTile['size'] == 'med')
                 continue;
             $goalTiles[] = $goalTileId;
+        }
+
+        if ($useGoalTiles && count($goalTiles) < 6) {
+            throw new Exception('Not enough goals selected: ' . json_encode($selectedGoalTileTypes));
         }
     }
 
@@ -152,8 +156,8 @@ class BonsaiLogic extends EventEmitter
         // on the board. The game plays as usual.
 
         // Set aside the Parchment cards
-        $parchmentCards = array_filter($cards, fn($cardId) => BonsaiMats::$Cards[$cardId]['type'] == CARDTYPE_PARCHMENT);
-        $otherCards = array_filter($cards, fn($cardId) => BonsaiMats::$Cards[$cardId]['type'] != CARDTYPE_PARCHMENT);
+        $parchmentCards = array_filter($cards, fn($cardId) => BonsaiMats::$Cards[$cardId]->type == CARDTYPE_PARCHMENT);
+        $otherCards = array_filter($cards, fn($cardId) => BonsaiMats::$Cards[$cardId]->type != CARDTYPE_PARCHMENT);
 
         // Put half the deck into the temporary pile with the Parchment cards
         $halfDeckCount = round(count($otherCards) / 2);
@@ -302,9 +306,18 @@ class BonsaiLogic extends EventEmitter
 
         foreach ($renounceGoals as $goalId)
         {
-            // TODO: is this goal in play?
-            // TODO: is it valid for the player to renounce this goal? (i.e. not claimed and not renounced)
-            // TODO: mark the goal as renounced
+            // Is this goal still available?
+            if (array_search($goalId, $this->data->goalTiles) === false)
+                throw new Exception('Goal not available');
+
+            // Is it valid for the player to renounce this goal? (i.e. not claimed and not renounced)
+            if (array_search($goalId, $this->data->players->$playerId->renounced))
+                throw new Exception('Goal already renounced');
+            if (array_search($goalId, $this->data->players->$playerId->claimed))
+                throw new Exception('Goal already claimed');
+
+            // Mark the goal as renounced
+            $this->data->players->$playerId->renounced[] = $goalId;
 
             $this->emit('goalRenounced', [
                 'playerId' => $playerId,
@@ -331,7 +344,7 @@ class BonsaiLogic extends EventEmitter
 
             // Mark the goal as claimed
             $this->data->players->$playerId->claimed[] = $goalId;
-            $this->data->goalTiles = array_filter($this->data->goalTiles, fn($g) => $g != $goalId);
+            $this->data->goalTiles = array_values(array_filter($this->data->goalTiles, fn($g) => $g != $goalId));
 
             $this->emit('goalClaimed', [
                 'playerId' => $playerId,
@@ -402,7 +415,7 @@ class BonsaiLogic extends EventEmitter
                     $tileType = BonsaiMats::$TileTypes[$tileTypeId];
                     $tileTypeName = $tileType['name'];
                     $this->data->players->$playerId->canPlay->$tileTypeName++;
-                    // TODO: emit
+                    // TODO: emit?
                 }
                 break;
 
@@ -628,7 +641,7 @@ class BonsaiLogic extends EventEmitter
                     break;
 
                 case GOALTYPE_LEAF:
-                    // TODO: adjacency
+                    // TODO: calculate leaf adjacency points
                     break;
 
                 case GOALTYPE_FLOWER:
@@ -649,7 +662,7 @@ class BonsaiLogic extends EventEmitter
                     break;
 
                 case GOALTYPE_PLACEMENT:
-                    // TODO
+                    // TODO: calculate placement points
                     break;
             }
         }
@@ -713,6 +726,17 @@ class BonsaiLogic extends EventEmitter
             $scores[$playerId] = $this->getPlayerScore($playerId);
 
         return $scores;
+    }
+
+    public function getRemainingTileCounts()
+    {
+        $counts = [];
+        foreach ($this->data->order as $playerId)
+        {
+            $inventory = $this->data->players->$playerId->inventory;
+            $counts[$playerId] = $inventory->wood + $inventory->leaf + $inventory->flower + $inventory->fruit;
+        }
+        return $counts;
     }
 
     function toJson()

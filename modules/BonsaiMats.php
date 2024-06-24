@@ -93,44 +93,44 @@ class BonsaiMats
             'points' => 12,
         ],
 
-        // Flower goals require the flowers to protrude past the pot sides (and be on the same side)
-        7 => [
-            'type' => GOALTYPE_FLOWER,
-            'size' => 'small',
-            'req' => 3,
-            'points' => 8,
-        ],
-        8 => [
-            'type' => GOALTYPE_FLOWER,
-            'size' => 'med',
-            'req' => 4,
-            'points' => 12,
-        ],
-        9 => [
-            'type' => GOALTYPE_FLOWER,
-            'size' => 'large',
-            'req' => 5,
-            'points' => 16,
-        ],
-
         // Fruit goals just require a simple count of fruit
-        10 => [
+        7 => [
             'type' => GOALTYPE_FRUIT,
             'size' => 'small',
             'req' => 3,
             'points' => 9,
         ],
-        11 => [
+        8 => [
             'type' => GOALTYPE_FRUIT,
             'size' => 'med',
             'req' => 4,
             'points' => 11,
         ],
-        12 => [
+        9 => [
             'type' => GOALTYPE_FRUIT,
             'size' => 'large',
             'req' => 5,
             'points' => 13,
+        ],
+
+        // Flower goals require the flowers to protrude past the pot sides (and be on the same side)
+        10 => [
+            'type' => GOALTYPE_FLOWER,
+            'size' => 'small',
+            'req' => 3,
+            'points' => 8,
+        ],
+        11 => [
+            'type' => GOALTYPE_FLOWER,
+            'size' => 'med',
+            'req' => 4,
+            'points' => 12,
+        ],
+        12 => [
+            'type' => GOALTYPE_FLOWER,
+            'size' => 'large',
+            'req' => 5,
+            'points' => 16,
         ],
 
         13 => [

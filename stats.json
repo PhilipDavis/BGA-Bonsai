@@ -1,1 +1,69 @@
-{}
+{
+    "player": {
+        "wood_tiles": {
+            "id": 10,
+            "name": "Wood tiles played",
+            "type": "int"
+        },
+        "leaf_tiles": {
+            "id": 11,
+            "name": "Leaf tiles played",
+            "type": "int"
+        },
+        "flower_tiles": {
+            "id": 12,
+            "name": "Flower tiles played",
+            "type": "int"
+        },
+        "fruit_tiles": {
+            "id": 13,
+            "name": "Fruit tiles played",
+            "type": "int"
+        },
+        "tool_cards": {
+            "id": 14,
+            "name": "Tool cards collected",
+            "type": "int"
+        },
+        "growth_cards": {
+            "id": 15,
+            "name": "Growth cards collected",
+            "type": "int"
+        },
+        "master_cards": {
+            "id": 16,
+            "name": "Master cards collected",
+            "type": "int"
+        },
+        "helper_cards": {
+            "id": 17,
+            "name": "Helper cards collected",
+            "type": "int"
+        },
+        "parchment_cards": {
+            "id": 18,
+            "name": "Parchment cards collected",
+            "type": "int"
+        },
+        "goals_claimed": {
+            "id": 19,
+            "name": "Goals claimed",
+            "type": "int"
+        },
+        "goals_renounced": {
+            "id": 20,
+            "name": "Goals renounced",
+            "type": "int"
+        },
+        "tiles_discarded": {
+            "id": 21,
+            "name": "Tiles discarded",
+            "type": "int"
+        },
+        "tiles_remaining": {
+            "id": 22,
+            "name": "Tiles remaining in supply",
+            "type": "int"
+        }
+    }
+}

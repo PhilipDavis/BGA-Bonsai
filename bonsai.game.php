@@ -20,11 +20,6 @@ define('OPT_GOALTILES', 'OPT_GOALTILES');
 define('OPT_GOALTILES_YES', 1);
 define('OPT_GOALTILES_NO', 2);
 
-define('LOC_TEMP', 'temp'); // Used in Tokonoma variant while adjusting the deck
-define('LOC_DECK', 'deck');
-define('LOC_SLOT', 'slot');
-define('LOC_PLAYER', 'player');
-
 
 class Bonsai extends Table
 {
@@ -107,9 +102,20 @@ class Bonsai extends Table
         $this->setGameStateInitialValue('gameTurn', 1);
         
         // Init game statistics
-        // (note: statistics used in this file must be defined in your stats.inc.php file)
-        //$this->initStat('table', 'table_teststat1', 0);    // Init a table statistics
-        //$this->initStat('player', 'player_teststat1', 0);  // Init a player statistics (for all players)
+        $this->initStat('player', 'wood_tiles', 0);
+        $this->initStat('player', 'leaf_tiles', 0);
+        $this->initStat('player', 'flower_tiles', 0);
+        $this->initStat('player', 'fruit_tiles', 0);
+        $this->initStat('player', 'tool_cards', 0);
+        $this->initStat('player', 'growth_cards', 0);
+        $this->initStat('player', 'master_cards', 0);
+        $this->initStat('player', 'helper_cards', 0);
+        $this->initStat('player', 'parchment_cards', 0);
+        $this->initStat('player', 'goals_claimed', 0);
+        $this->initStat('player', 'goals_renounced', 0);
+        $this->initStat('player', 'tiles_discarded', 0);
+        $this->initStat('player', 'tiles_remaining', 0);
+
 
         $gameOptions = [
             'tokonomaVariant' => $this->getOption(OPT_RULES) == OPT_RULES_TOKONOMA,
@@ -242,6 +248,8 @@ class Bonsai extends Table
 
     function notify_tileRemoved($playerId, $tileId, $score)
     {
+        // TODO? stats?
+
         $this->notifyAllPlayers('tileRemoved', clienttranslate('${playerName} removes ${_tileId}'), [
             'i18n' => [ '_tileId' ],
             'playerId' => $playerId,
@@ -255,6 +263,8 @@ class Bonsai extends Table
 
     function notify_tilesAdded($playerId, $placeTiles, $score)
     {
+        // TODO: stats
+
         $msg =
             count($placeTiles) == 1
                 ? clienttranslate('${playerName} adds ${n} tile')
@@ -272,6 +282,8 @@ class Bonsai extends Table
 
     function notify_goalRenounced($playerId, $goalId)
     {
+        $this->incStat(1, 'goals_renounced', $playerId);
+
         $this->notifyAllPlayers('goalRenounced', clienttranslate('${playerName} renounces ${_goalId}'), [
             'i18n' => [ '_goalId' ],
             '_goalId' => clienttranslate('a goal'), // TODO
@@ -284,6 +296,8 @@ class Bonsai extends Table
 
     function notify_goalClaimed($playerId, $goalId, $score)
     {
+        $this->incStat(1, 'goals_claimed', $playerId);
+
         $this->notifyAllPlayers('goalClaimed', clienttranslate('${playerName} claims ${_goalId}'), [
             'i18n' => [ '_goalId' ],
             '_goalId' => clienttranslate('a goal'), // TODO
@@ -326,6 +340,26 @@ class Bonsai extends Table
 
     function notify_cardTaken($playerId, $cardId)
     {
+        $card = BonsaiMats::$Cards[$cardId];
+        switch ($card->type)
+        {
+            case CARDTYPE_TOOL:
+                $this->incStat(1, 'tool_cards', $playerId);
+                break;
+            case CARDTYPE_GROWTH:
+                $this->incStat(1, 'growth_cards', $playerId);
+                break;
+            case CARDTYPE_MASTER:
+                $this->incStat(1, 'master_cards', $playerId);
+                break;
+            case CARDTYPE_HELPER:
+                $this->incStat(1, 'helper_cards', $playerId);
+                break;
+            case CARDTYPE_PARCHMENT:
+                $this->incStat(1, 'parchment_cards', $playerId);
+                break;
+        }
+
         $this->notifyAllPlayers('cardTaken', clienttranslate('${playerName} draws ${_cardId}'), [
             'i18n' => [ '_cardId' ],
             '_cardId' => clienttranslate('a card'), // TODO? improve the details?
@@ -348,7 +382,25 @@ class Bonsai extends Table
 
     function notify_tilesReceived($playerId, $tileTypes)
     {
-        // TODO: nested log display... show all the tile types
+        foreach ($tileTypes as $tileType)
+        {
+            switch ($tileType)
+            {
+                case TILETYPE_WOOD:
+                    $this->incStat(1, 'wood_tiles', $playerId);
+                    break;
+                case TILETYPE_LEAF:
+                    $this->incStat(1, 'leaf_tiles', $playerId);
+                    break;
+                case TILETYPE_FLOWER:
+                    $this->incStat(1, 'flower_tiles', $playerId);
+                    break;
+                case TILETYPE_FRUIT:
+                    $this->incStat(1, 'fruit_tiles', $playerId);
+                    break;
+            }
+        }
+        
         $this->notifyAllPlayers('tilesReceived', clienttranslate('${playerName} receives ${_tileType}'), [
             'i18n' => [ '_tileType' ],
             '_tileType' => clienttranslate('tiles'),
@@ -376,14 +428,15 @@ class Bonsai extends Table
 
     function notify_tilesDiscarded($playerId, $tiles)
     {
-        // TODO: nested log display... show all the tile types
-        $this->notifyAllPlayers('tilesDiscarded', clienttranslate('${playerName} discards ${_tiles}'), [
-            'i18n' => [ '_tiles' ],
-            '_tiles' => clienttranslate('tiles'),
+        $this->incStat(count($tiles), 'tiles_discarded', $playerId);
+        
+        $this->notifyAllPlayers('tilesDiscarded', clienttranslate('${playerName} discards ${_tileType}'), [
+            'i18n' => [ '_tileType' ],
+            '_tileType' => clienttranslate('tiles'),
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
-            'tiles' => $tiles,
-            'preserve' => [ 'playerId', 'tiles' ],
+            'tileType' => $tiles,
+            'preserve' => [ 'playerId', 'tileType' ],
         ]);
     }
 
@@ -411,11 +464,16 @@ class Bonsai extends Table
         $bonsai = $this->loadGameState();
         if ($bonsai->getGameProgression() >= 100)
         {
-            $scores = $bonsai->getScores();
+            // Update game stats
+            foreach ($bonsai->getRemainingTileCounts() as $playerId => $tileCount)
+                $this->setStat($tileCount, 'tiles_remaining', $playerId);
 
+            // Record the final scores in the database
+            $scores = $bonsai->getScores();
             foreach ($scores as $playerId => $score)
                 $this->setPlayerScore($playerId, $score['total']);
 
+            // Report the final scores to the players
             $this->notifyAllPlayers('finalScore', '', [
                 'scores' => $scores,
                 'preserve' => [ 'scores' ],
