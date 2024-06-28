@@ -1,2 +1,2 @@
 @Echo off
-docker run -it --rm -v %cd%/modules:/var/bga bonsaitest
+docker run -it --rm -v %cd%:/var/bga bonsaitest

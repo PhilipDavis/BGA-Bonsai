@@ -20,6 +20,8 @@
         <div id="bon_slot-2" class="bon_slot"></div>
         <div id="bon_slot-3" class="bon_slot"></div>
     </div>
+    <div id="bon_player"></div>
+    <div id="bon_opponents"></div>
 </div>
 
 
@@ -28,30 +30,35 @@
 const bonsai_Templates = {
     playerSummary:
         '<div id="bon_player-summary-${PID}" class="bon_player-summary">' +
-            '<span id="bon_player-summary-stat-block-${PID}-capacity" class="bon_player-summary-stat-block">' +
-                '<i class="bon_icon-capacity"></i>' +
-                '<span id="bon_capacity-${PID}" class="bon_player-summary-stat">0</span>' +
-            '</span>' +
-            '<span id="bon_player-summary-stat-block-${PID}-wood" class="bon_player-summary-stat-block">' +
-                '<i class="bon_icon bon_icon-wood"></i>' +
-                '<span id="bon_tree-wood-${PID}" class="bon_player-summary-stat">0</span>' +
-            '</span>' +
-            '<span id="bon_player-summary-stat-block-${PID}-leaf" class="bon_player-summary-stat-block">' +
-                '<i class="bon_icon bon_icon-leaf"></i>' +
-                '<span id="bon_tree-leaf-${PID}" class="bon_player-summary-stat">0</span>' +
-            '</span>' +
-            '<span id="bon_player-summary-stat-block-${PID}-flower" class="bon_player-summary-stat-block">' +
-                '<i class="bon_icon bon_icon-flower"></i>' +
-                '<span id="bon_tree-flower-${PID}" class="bon_player-summary-stat">0</span>' +
-            '</span>' +
-            '<span id="bon_player-summary-stat-block-${PID}-fruit" class="bon_player-summary-stat-block">' +
-                '<i class="bon_icon bon_icon-fruit"></i>' +
-                '<span id="bon_tree-fruit-${PID}" class="bon_player-summary-stat">0</span>' +
-            '</span>' +
+            '<div class="bon_stats">' +
+                '<span id="bon_player-summary-stat-block-${PID}-capacity" class="bon_player-summary-stat-block">' +
+                    '<i class="bon_icon-capacity"></i>' +
+                    '<span id="bon_capacity-${PID}" class="bon_player-summary-stat">0</span>' +
+                '</span>' +
+                '<span id="bon_player-summary-stat-block-${PID}-wood" class="bon_player-summary-stat-block bon_zero">' +
+                    '<i class="bon_icon bon_icon-wood"></i>' +
+                    '<span id="bon_tree-wood-${PID}" class="bon_player-summary-stat">0</span>' +
+                '</span>' +
+                '<span id="bon_player-summary-stat-block-${PID}-leaf" class="bon_player-summary-stat-block bon_zero">' +
+                    '<i class="bon_icon bon_icon-leaf"></i>' +
+                    '<span id="bon_tree-leaf-${PID}" class="bon_player-summary-stat">0</span>' +
+                '</span>' +
+                '<span id="bon_player-summary-stat-block-${PID}-flower" class="bon_player-summary-stat-block bon_zero">' +
+                    '<i class="bon_icon bon_icon-flower"></i>' +
+                    '<span id="bon_tree-flower-${PID}" class="bon_player-summary-stat">0</span>' +
+                '</span>' +
+                '<span id="bon_player-summary-stat-block-${PID}-fruit" class="bon_player-summary-stat-block bon_zero">' +
+                    '<i class="bon_icon bon_icon-fruit"></i>' +
+                    '<span id="bon_tree-fruit-${PID}" class="bon_player-summary-stat">0</span>' +
+                '</span>' +
+            '</div>' +
+            '<div id="bon_player-summary-goals-${PID}" class="bon_player-summary-goals">' +
+            '</div>' +
         '</div>',
 
     player:
         '<div id="bon_player-${PID}" class="bon_player bon_color-${COLOR}">' +
+            '<div class="bon_player-name">${NAME}</div>' +
             '<div id="bon_tree-host-${PID}" class="bon_tree-host">' +
                 '<div id="bon_tree-${PID}" class="bon_tree">' +
                     '<div class="bon_pot"></div>' +
@@ -82,6 +89,11 @@ const bonsai_Templates = {
             'class="bon_goal bon_goal-${GOAL_ID}" ' +
         '></div>',
 
+    summaryGoalTile:
+        '<div id="bon_summary-goal-${PID}-${GOAL_ID}" ' +
+            'class="bon_goal bon_goal-${GOAL_ID} ${CLASS}" ' +
+        '></div>',
+
     goalTooltip:
         '<div class="bon_tooltip">' +
             '<div class="bon_tooltip-title">' +
@@ -96,6 +108,10 @@ const bonsai_Templates = {
             '<p class="bon_tooltip-warning">' +
                 '${WARN}' +
             '</p>' +
+            '<p class="bon_tooltip-status">' +
+                '<span class="fa fa-md ${ICON}"></span>' +
+                '${STATUS}' +
+            '</p>' +
         '</div>',
 
     tile:
@@ -109,6 +125,11 @@ const bonsai_Templates = {
         '<div id="${DIV_ID}" ' +
             'class="bon_tile-placeholder" ' +
         '></div>',
+
+    deckCard:
+        '<div id="bon_deck-card-${INDEX}" class="bon_card bon_card-face-down">' +
+            '<div class="bon_card-back"></div>' +
+        '</div>',
 
     card:
         '<div id="bon_card-${CARD_ID}" class="bon_card bon_card-${CARD_ID} ${DOWN}">' +
@@ -158,10 +179,13 @@ const bonsai_Templates = {
         '></span>',
 
     cardIdLog:
-        '<div class="bon_log-card bon_log-card-${DATA}"></div>',
+        '<div id="${_UNIQUEID}" class="bon_log-card bon_log-card-${DATA}"></div>',
 
     tileTypeLog:
         '<div class="bon_log-tile bon_log-tile-${DATA}"></div>',
+
+    goalLog:
+        '<div id="${_UNIQUEID}" class="bon_log-goal bon_goal-${DATA}"></div>',
 
     finalScores:
         '<div id="bon_final-scores">' +

@@ -45,14 +45,6 @@ define([], () => {
         Left: 4,
         TopLeft: 5,
     };
-    const ReflexiveDirection = { // KILL?
-        [Direction.TopRight]: Direction.BottomLeft,
-        [Direction.Right]: Direction.Left,
-        [Direction.BottomRight]: Direction.TopLeft,
-        [Direction.BottomLeft]: Direction.TopRight,
-        [Direction.Left]: Direction.Right,
-        [Direction.TopLeft]: Direction.BottomRight,
-    };
     
     class Tree {
         constructor() {
@@ -67,6 +59,8 @@ define([], () => {
                     this.invalidKeys[makeKey(x_, y)] = true;
                 }
             }
+            delete this.invalidKeys['-2,-2']; // Allowed to place tile at bottom left foot of pot
+            delete this.invalidKeys['3,-2'];  // Allowed to place tile at bottom right foot of pot
         }
 
         getAllKeys() {

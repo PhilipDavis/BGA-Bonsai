@@ -1,6 +1,8 @@
 <?php
 // © Copyright 2024, Philip Davis (mrphilipadavis AT gmail)
 
+define('clienttranslate', '');
+
 if (!defined('BON_MATS'))
 {
     define('BON_MATS', true);
@@ -16,6 +18,10 @@ if (!defined('BON_MATS'))
 	define('GOALTYPE_FLOWER', 3);
 	define('GOALTYPE_FRUIT', 4);
 	define('GOALTYPE_PLACEMENT', 5);
+
+    define('GOALSIZE_SMALL', 1);
+	define('GOALSIZE_MEDIUM', 2);
+	define('GOALSIZE_LARGE', 3);
 
 	define('CARDTYPE_TOOL', 'tool');
 	define('CARDTYPE_GROWTH', 'growth');
@@ -34,121 +40,25 @@ class BonsaiMats
         TILETYPE_WOOD => [
             'id' => TILETYPE_WOOD,
             'name' => 'wood',
-            //'label' => clienttranslate('Wood'), // TODO/KILL?
         ],
         TILETYPE_LEAF => [
             'id' => TILETYPE_LEAF,
             'name' => 'leaf',
-            //'label' => clienttranslate('Leaf'),
         ],
         TILETYPE_FLOWER => [
             'id' => TILETYPE_FLOWER,
             'name' => 'flower',
-            //'label' => clienttranslate('Flower'),
         ],
         TILETYPE_FRUIT => [
             'id' => TILETYPE_FRUIT,
             'name' => 'fruit',
-            //'label' => clienttranslate('Fruit'),
         ],
     ];
 
-    static array $GoalTiles = [
-        1 => [
-            'type' => GOALTYPE_WOOD,
-            'size' => 'small',
-            'req' => 8,
-            'points' => 5,
-        ],
-        2 => [
-            'type' => GOALTYPE_WOOD,
-            'size' => 'med',
-            'req' => 10,
-            'points' => 10,
-        ],
-        3 => [
-            'type' => GOALTYPE_WOOD,
-            'size' => 'large',
-            'req' => 12,
-            'points' => 15,
-        ],
-
-        // Note: The leaf goals require ADJACENT leafs!
-        4 => [
-            'type' => GOALTYPE_LEAF,
-            'size' => 'small',
-            'req' => 5,
-            'points' => 6,
-        ],
-        5 => [
-            'type' => GOALTYPE_LEAF,
-            'size' => 'med',
-            'req' => 7,
-            'points' => 9,
-        ],
-        6 => [
-            'type' => GOALTYPE_LEAF,
-            'size' => 'large',
-            'req' => 9,
-            'points' => 12,
-        ],
-
-        // Fruit goals just require a simple count of fruit
-        7 => [
-            'type' => GOALTYPE_FRUIT,
-            'size' => 'small',
-            'req' => 3,
-            'points' => 9,
-        ],
-        8 => [
-            'type' => GOALTYPE_FRUIT,
-            'size' => 'med',
-            'req' => 4,
-            'points' => 11,
-        ],
-        9 => [
-            'type' => GOALTYPE_FRUIT,
-            'size' => 'large',
-            'req' => 5,
-            'points' => 13,
-        ],
-
-        // Flower goals require the flowers to protrude past the pot sides (and be on the same side)
-        10 => [
-            'type' => GOALTYPE_FLOWER,
-            'size' => 'small',
-            'req' => 3,
-            'points' => 8,
-        ],
-        11 => [
-            'type' => GOALTYPE_FLOWER,
-            'size' => 'med',
-            'req' => 4,
-            'points' => 12,
-        ],
-        12 => [
-            'type' => GOALTYPE_FLOWER,
-            'size' => 'large',
-            'req' => 5,
-            'points' => 16,
-        ],
-
-        13 => [
-            'type' => GOALTYPE_PLACEMENT,
-            'size' => 'small',
-            'points' => 7,
-        ],
-        14 => [
-            'type' => GOALTYPE_PLACEMENT,
-            'size' => 'med',
-            'points' => 10,
-        ],
-        15 => [
-            'type' => GOALTYPE_PLACEMENT,
-            'size' => 'large',
-            'points' => 14,
-        ],
-    ];
+    // Populated from the material.inc.php file to work around
+    // the stupid limitation of not being able to use the
+    // clienttranslate() wrapper in a static declaration.
+    static array $GoalTiles = [];
 
     static array $GoalTileTypes = [
         GOALTYPE_WOOD,
@@ -263,43 +173,43 @@ class BonsaiMats
         ],
 
         // Parchment Cards (41 - 47)
-        [
+        [ // 41
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ TILETYPE_WOOD ],
             'points' => 1,
             'qty' => [ 1, 1, 1, 1 ],
         ],
-        [
+        [ // 42
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ TILETYPE_LEAF ],
             'points' => 1,
             'qty' => [ 1, 1, 1, 1 ],
         ],
-        [
+        [ // 43
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ TILETYPE_FLOWER ],
             'points' => 2,
             'qty' => [ 1, 1, 1, 1 ],
         ],
-        [
+        [ // 44
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ TILETYPE_FRUIT ],
             'points' => 2,
             'qty' => [ 1, 1, 1, 1 ],
         ],
-        [
+        [ // 45
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ CARDTYPE_GROWTH ],
             'points' => 2,
             'qty' => [ 1, 1, 1, 1 ],
         ],
-        [
+        [ // 46
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ CARDTYPE_HELPER ],
             'points' => 2,
             'qty' => [ 1, 1, 1, 1 ],
         ],
-        [
+        [ // 47
             'type' => CARDTYPE_PARCHMENT,
             'resources' => [ CARDTYPE_MASTER ],
             'points' => 2,

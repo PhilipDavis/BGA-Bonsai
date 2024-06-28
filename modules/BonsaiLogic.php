@@ -10,6 +10,13 @@ define('BON_PLAYER_RED', 1);
 define('BON_PLAYER_BLUE', 2);
 define('BON_PLAYER_PURPLE', 3);
 
+define('DIR_TOP_RIGHT', 0);
+define('DIR_RIGHT', 1);
+define('DIR_BOTTOM_RIGHT', 2);
+define('DIR_BOTTOM_LEFT', 3);
+define('DIR_LEFT', 4);
+define('DIR_TOP_LEFT', 5);
+
 
 class BonsaiLogic extends EventEmitter
 {
@@ -111,7 +118,7 @@ class BonsaiLogic extends EventEmitter
         {
             if (array_search($goalTile['type'], $selectedGoalTileTypes) === false)
                 continue;
-            if (count((array)$players) <= 2 && $goalTile['size'] == 'med')
+            if (count((array)$players) <= 2 && $goalTile['size'] == GOALSIZE_MEDIUM)
                 continue;
             $goalTiles[] = $goalTileId;
         }
@@ -211,7 +218,7 @@ class BonsaiLogic extends EventEmitter
     function cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals)
     {
         // In end game, reduce the number of final turns left
-        if ($this->data->finalTurns !== null)
+        if (isset($this->data->finalTurns))
             $this->data->finalTurns--;
 
         $this->removeTiles($removeTiles);
@@ -271,7 +278,7 @@ class BonsaiLogic extends EventEmitter
             // Does the player own this tile type? Reduce the counter by 1
             $typeName = BonsaiMats::$TileTypes[$type]['name'];
             if ($inventory->$typeName < 1)
-                throw new Exception('Invalid placement');
+                throw new Exception('Player does not have enough ' . $typeName);
             $inventory->$typeName--;
 
             // Does the player's Seishi allow this tile type to be played?
@@ -439,7 +446,7 @@ class BonsaiLogic extends EventEmitter
                     $this->data->players->$playerId->inventory->$tileTypeName++;
                     $masterTilesReceived[] = $tileTypeId;
                 }
-                $this->emit('tilesReceived', [ $playerId, $masterTilesReceived ]);
+                $this->emit('tilesReceived', [ $playerId, $masterTilesReceived, $index ]);
                 break;
 
             case CARDTYPE_HELPER:
@@ -485,7 +492,7 @@ class BonsaiLogic extends EventEmitter
             $this->data->players->$playerId->inventory->$tileTypeName++;
         }
         if (count($tileTypes))
-            $this->emit('tilesReceived', [ $playerId, $tileTypes ]);
+            $this->emit('tilesReceived', [ $playerId, $tileTypes, $index ]);
 
 
         //
@@ -501,6 +508,8 @@ class BonsaiLogic extends EventEmitter
         }
         else {
             array_unshift($this->data->board, null);
+
+            $this->emit('cardRevealed', [ null ]);
         }
     
         //
@@ -575,22 +584,33 @@ class BonsaiLogic extends EventEmitter
         $cardProgression = $maxCardProgression - round($maxCardProgression * $currentCardCount / $startingCardCount);
 
         $finalTurnProgression =
-            $this->data->finalTurns === null
-                ? 0
-                : $maxFinalTurnProgression - $this->data->finalTurns * $percentPerFinalTurn
+            isset($this->data->finalTurns)
+                ? $maxFinalTurnProgression - $this->data->finalTurns * $percentPerFinalTurn
+                : 0
         ;
 
         return $cardProgression + $finalTurnProgression;
     }
 
+    public function getFaceDownCards()
+    {
+        $result = [];
+        foreach ($this->data->players as $playerId => $player)
+            $result[$playerId] = $player->faceDown;
+
+        return $result;
+    }
+
     // Return only the public data and the data private to the given player 
     public function getPlayerData($playerId)
     {
+        $isGameOver = $this->getGameProgression() >= 100;
         $data = json_decode(json_encode($this->data));
         foreach ($this->data->players as $id => $player)
         {
             // Only return array counts instead of the card IDs for private player data
-            if ($id != $playerId)
+            // (unless the game is over! -- then we want to reveal the cards)
+            if ($id != $playerId && !$isGameOver)
                 $data->players->$id->faceDown = count($player->faceDown);
         }
 
@@ -600,18 +620,160 @@ class BonsaiLogic extends EventEmitter
         return $data;
     }
 
+    public static function makeKey($x, $y)
+    {
+        return strval($x) . ',' . strval($y);
+    }
+
+    public static function parseKey($key)
+    {
+        return array_map(fn($s) => intval($s), explode(',', $key));
+    }
+
+    public static function getAdjacentKeys($key)
+    {
+        $coords = BonsaiLogic::parseKey($key);
+        $x = $coords[0];
+        $y = $coords[1];
+        $adjacentKeys = $y % 2
+            ? [
+                DIR_TOP_RIGHT => [ $x, $y + 1 ],
+                DIR_RIGHT => [ $x + 1, $y ],
+                DIR_BOTTOM_RIGHT => [ $x, $y - 1 ],
+                DIR_BOTTOM_LEFT => [ $x - 1, $y - 1 ],
+                DIR_LEFT => [ $x - 1, $y ],
+                DIR_TOP_LEFT => [ $x - 1, $y + 1 ],
+            ]
+            : [
+                DIR_TOP_RIGHT => [ $x + 1, $y + 1 ],
+                DIR_RIGHT => [ $x + 1, $y ],
+                DIR_BOTTOM_RIGHT => [ $x + 1, $y - 1 ],
+                DIR_BOTTOM_LEFT => [ $x, $y - 1 ],
+                DIR_LEFT => [ $x - 1, $y ],
+                DIR_TOP_LEFT => [ $x, $y + 1 ],
+            ];
+
+        // Remove keys that are invalid (i.e. correspond to locations occupied by the pot)
+        $adjacentKeys = array_filter($adjacentKeys, function($key)
+        {
+            $x = $key[0];
+            $y = $key[1];
+            if ($y === 0)
+                return $x < -2 || $x > 3;
+            else if ($y === -1)
+                return $x < -1 || $x > 3;
+            else if ($y === -2)
+                return $x < -1 || $x > 2;
+            return true;
+        });
+
+        return array_map(fn($coords) => BonsaiLogic::makeKey($coords[0], $coords[1]), $adjacentKeys);
+    }
+
+    public static function countAdjacentLeafs($leafMoves)
+    {
+        $result = 0;
+        $visited = (object)[];
+        $stack = [];
+        $leafKeys = array_values(array_map(fn($move) => BonsaiLogic::makeKey($move[1], $move[2]), $leafMoves));
+
+        while (count($leafKeys) > 0)
+        {
+            $leafKey = array_shift($leafKeys);
+            array_push($stack, $leafKey);
+
+            $count = 0;
+            while (count($stack) > 0)
+            {
+                $leafKey = array_pop($stack);
+                
+                if (isset($visited->$leafKey)) continue;
+                $visited->$leafKey = true;
+                $count++;
+                
+                $adjacentKeys = array_values(BonsaiLogic::getAdjacentKeys($leafKey));
+                $adjacentLeafKeys = array_values(array_filter($adjacentKeys, fn($key) => array_search($key, $leafKeys) !== false));
+                array_push($stack, ...$adjacentLeafKeys);
+            }
+            $result = max($result, $count);
+        }
+
+        return $result;
+    }
+
+    public static function getFlowerScore($moves)
+    {
+        $flowerMoves = array_filter($moves, fn($move) => $move[0] == TILETYPE_FLOWER);
+
+        // Create a lookup for tiles that exist in the tree
+        $filled = (object)[];
+        foreach ($moves as $move)
+        {
+            $key = BonsaiLogic::makeKey($move[1], $move[2]);
+            $filled->$key = true;
+        }
+
+        // Test each flower move to see how many adjacent spaces are filled
+        $score = 0;
+        foreach ($flowerMoves as $move)
+        {
+            $score += 6;
+            $key = BonsaiLogic::makeKey($move[1], $move[2]);
+            $adjacentKeys = array_values(BonsaiLogic::getAdjacentKeys($key));
+            foreach ($adjacentKeys as $adjKey)
+            {
+                if (isset($filled->$adjKey))
+                    $score--;
+            }
+        }
+
+        return $score;
+    }
+
+    public static function getProtrudingDirection($move)
+    {
+        $x = $move[1];
+        $y = $move[2];
+        if ($y % 2 && $x > 3) return 1;
+        if ($y % 2 && $x < -1) return -1;
+        if ($y % 2 == 0 && $x >= 3) return 1;
+        if ($y % 2 == 0 && $x < -1) return -1; 
+    }
+
+    public static function getPlacementQuadrant($move)
+    {
+        $x = $move[1];
+        $y = $move[2];
+        $side = BonsaiLogic::getProtrudingDirection($move);
+
+        $isBelow = $y <= -2;
+        if ($side > 0) {
+            return $isBelow ? 4 : 1;
+        }
+        else if ($side < 0) {
+            return $isBelow ? 3 : 2;
+        }
+        return null; // We only want to consider protruding outside the pot
+    }
+
     public function getPlayerScore($playerId)
     {
         $final = $this->getGameProgression() >= 100;
 
         $player = $this->data->players->$playerId;
 
+        $leafMoves = array_filter($player->played, fn($move) => $move[0] == TILETYPE_LEAF);
+        $flowerMoves = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER);
+
         $woodTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_WOOD));
-        $leafTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_LEAF));
-        $flowerTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER));
+        $leafTiles = count($leafMoves);
+        $flowerTiles = count($flowerMoves);
         $fruitTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_FRUIT));
 
-        $growthCards = array_filter($player->faceDown, fn($cardId) => BonsaiMats::$Cards[$cardId]->type == CARDTYPE_GROWTH);
+        // Face Up
+        $growthCards = array_filter($player->faceUp, fn($cardId) => BonsaiMats::$Cards[$cardId]->type == CARDTYPE_GROWTH);
+
+        // Face Down
         $masterCards = array_filter($player->faceDown, fn($cardId) => BonsaiMats::$Cards[$cardId]->type == CARDTYPE_MASTER);
         $helperCards = array_filter($player->faceDown, fn($cardId) => BonsaiMats::$Cards[$cardId]->type == CARDTYPE_HELPER);
         $parchmentCards = array_filter($player->faceDown, fn($cardId) => BonsaiMats::$Cards[$cardId]->type == CARDTYPE_PARCHMENT);
@@ -620,8 +782,7 @@ class BonsaiLogic extends EventEmitter
         $leafScore = $leafTiles * 3;
 
         // 1 Point per space adjacent to a flower
-        // TODO
-        $flowerScore = 0; // KILL
+        $flowerScore = BonsaiLogic::getFlowerScore($player->played);
 
         // 7 Points per fruit
         $fruitScore = $fruitTiles * 7;
@@ -630,41 +791,56 @@ class BonsaiLogic extends EventEmitter
         $goalScore = 0;
         foreach ($player->claimed as $goalId)
         {
+            $count = 0;
             $goalTile = BonsaiMats::$GoalTiles[$goalId];
             switch ($goalTile['type'])
             {
                 case GOALTYPE_WOOD:
-                    // Check the number of wood tiles
-                    if ($woodTiles >= $goalTile['req']) {
-                        $goalScore += $goalTile['points'];
-                    }
+                    $count = $woodTiles;
                     break;
 
                 case GOALTYPE_LEAF:
-                    // TODO: calculate leaf adjacency points
+                    $count = BonsaiLogic::countAdjacentLeafs($leafMoves);
                     break;
 
                 case GOALTYPE_FLOWER:
                     // Check the number of flower tiles beyond the pot edges (on the same side)
-                    $rightSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && $move[1] >= 3);
-                    $leftSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && $move[1] <= -1);
-                    // TODO: must the flowers be above the table?
-                    if (max($leftSide, $rightSide) >= $goalTile['req']) {
-                        $goalScore += $goalTile['points'];
-                    }
+                    $rightSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === 1);
+                    $leftSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === -1);
+                    $count = max($leftSide, $rightSide);
                     break;
                     
                 case GOALTYPE_FRUIT:
-                    // Check the number of wood tiles
-                    if ($fruitTiles >= $goalTile['req']) {
-                        $goalScore += $goalTile['points'];
-                    }
+                    $count = $fruitTiles;
                     break;
 
                 case GOALTYPE_PLACEMENT:
-                    // TODO: calculate placement points
+                    switch ($goalTile['size']) {
+                        case GOALSIZE_SMALL:
+                            $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move)));
+                            break;
+
+                        case GOALSIZE_MEDIUM:
+                            $protrudingSides = array_map(fn($move) => BonsaiLogic::getProtrudingDirection($move), $player->played);
+                            $count += array_search(-1, $protrudingSides) === false ? 0 : 1;
+                            $count += array_search(1, $protrudingSides) === false ? 0 : 1;
+                            break;
+
+                        case GOALSIZE_LARGE:
+                            $quadrants = array_values(array_map(fn($move) => BonsaiLogic::getPlacementQuadrant($move), $player->played));
+                            $quad1 = count(array_filter($quadrants, fn($q) => $q === 1)) > 0;
+                            $quad2 = count(array_filter($quadrants, fn($q) => $q === 2)) > 0;
+                            $quad3 = count(array_filter($quadrants, fn($q) => $q === 3)) > 0;
+                            $quad4 = count(array_filter($quadrants, fn($q) => $q === 4)) > 0;
+                            if (count($quadrants)) $count = 1;
+                            if (($quad1 && $quad3) || ($quad3 && $quad4)) $count = 2;
+                            break;
+                    }
                     break;
             }
+
+            if ($count >= $goalTile['req'])
+                $goalScore += $goalTile['points'];
         }
 
         //
@@ -679,31 +855,31 @@ class BonsaiLogic extends EventEmitter
                 switch ($card->resources[0])
                 {
                     case TILETYPE_WOOD:
-                        $parchmentScore = $card->points * $woodTiles;
+                        $parchmentScore += $card->points * $woodTiles;
                         break;
 
                     case TILETYPE_LEAF:
-                        $parchmentScore = $card->points * $leafTiles;
+                        $parchmentScore += $card->points * $leafTiles;
                         break;
                         
                     case TILETYPE_FLOWER:
-                        $parchmentScore = $card->points * $flowerTiles;
+                        $parchmentScore += $card->points * $flowerTiles;
                         break;
                         
                     case TILETYPE_FRUIT:
-                        $parchmentScore = $card->points * $fruitTiles;
+                        $parchmentScore += $card->points * $fruitTiles;
                         break;
                         
                     case CARDTYPE_GROWTH:
-                        $parchmentScore = $card->points * count($growthCards);
+                        $parchmentScore += $card->points * count($growthCards);
                         break;
                         
                     case CARDTYPE_MASTER:
-                        $parchmentScore = $card->points * count($masterCards);
+                        $parchmentScore += $card->points * count($masterCards);
                         break;
                         
                     case CARDTYPE_HELPER:
-                        $parchmentScore = $card->points * count($helperCards);
+                        $parchmentScore += $card->points * count($helperCards);
                         break;
                 }
             }
@@ -717,6 +893,11 @@ class BonsaiLogic extends EventEmitter
             'parchment' => $parchmentScore,
             'total' => $leafScore + $flowerScore + $fruitScore + $goalScore + $parchmentScore,
         ];
+    }
+
+    public function getGoalTiles()
+    {
+        return $this->data->goalTiles;
     }
 
     public function getScores()

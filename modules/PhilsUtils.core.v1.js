@@ -4,6 +4,9 @@ define([], function () {
     const config = {
         gameName: '', // Leave this blank. Value assigned in install() method.
     };
+    const data = {
+        nextUniqueId: 1, // Used by stringFromTemplate when replacing ${_UNIQUEID}
+    };
 
     //
     // Install functions into the gameui and dojo contexts.
@@ -11,7 +14,7 @@ define([], function () {
     // method. Will not work if called in the game constructor!
     //
     // setup() {
-    //     init(dojo, this); // or init(dojo, this, { debug: true });
+    //     install(dojo, this); // or install(dojo, this, { debug: true });
     //
     //     // ...setup your game
     // }
@@ -24,22 +27,47 @@ define([], function () {
         // Save the game name for use later (invoking server actions)
         config.gameName = gameui.game_name;
       
-        dojo.string.substitute = (template, replacements) => {
-            return stringFromTemplate(template, replacements, debug);
+        //
+        // dojo.string.substitute
+        //
+        const _substitute = dojo.string.substitute;
+        dojo.string.substitute = function() {
+            try {
+                const [ template, replacements ] = arguments;
+                return stringFromTemplate(template, replacements, debug);
+            }
+            catch (err) {
+                if (err.message === "USE_BGA") {
+                    return _substitute.apply(dojo.string, arguments);
+                }
+                throw err;
+            }
         };
 
+        //
+        // format_block
+        //
         gameui.__proto__.format_block = (templateName, replacements) => {
             return formatBlock(templateName, replacements, debug);
         };
 
-        //const _fsr = gameui.__proto__.format_string_recursive;
+        //
+        // format_string_recursive
+        //
+        const _fsr = gameui.__proto__.format_string_recursive;
         gameui.__proto__.format_string_recursive = function() {
             // Note: mine does not perform recursion!!
 
             const [ template, args ] = arguments;
-            return stringFromTemplate(template, args, debug);
-
-            //return _fsr.apply(gameui, arguments);
+            try {
+                return stringFromTemplate(template, args, debug);
+            }
+            catch (err) {
+                if (err.message === "USE_BGA") {
+                    return _fsr.apply(gameui, arguments);
+                }
+                throw err;
+            }
         };
     }
 
@@ -94,11 +122,23 @@ define([], function () {
         // a real-world scenario.
         //
         return template.replace(/(?<!\$)\$\{(?<name>.*?)(?:\[(?<index>.+?)\])?\}/g, (match, name, index) => {
+            if (name === '_UNIQUEID') {
+                replacements[name] = `${config.gameName}_uniqueid-${data.nextUniqueId++}`;
+            }
+
             let value = replacements[name];
             if (typeof value === 'function') {
                 value = value(index);
             }
             if (value === undefined) {
+                // I saw an error where the replacement name was "!actionBarTemplate" so
+                // it looks like BGA has their own special names for things. Since I'm 
+                // monkeypatching their template handler, I'll add this special escape
+                // hatch to let the caller know to defer processing to the original code.
+                if (/^!.+/.test(name)) {
+                    throw new Error('USE_BGA');
+                }
+
                 if (strict) {
                     throw new Error(`No replacement "${name}" in ${JSON.stringify(replacements)} for template ${template}`);
                 }
@@ -149,6 +189,7 @@ define([], function () {
         }
     }
 
+    // TODO: update to new bgaPerformAction function
     async function invokeServerActionAsync(actionName, args) {
         return new Promise((resolve, reject) => {
             try {

@@ -246,18 +246,18 @@ class Bonsai extends Table
         $this->gamestate->nextState('endTurn');
     }
 
-    function notify_tileRemoved($playerId, $tileId, $score)
+    function notify_tileRemoved($playerId, $tileId, $x, $y, $score)
     {
-        // TODO? stats?
-
-        $this->notifyAllPlayers('tileRemoved', clienttranslate('${playerName} removes ${_tileId}'), [
-            'i18n' => [ '_tileId' ],
+        $this->notifyAllPlayers('tileRemoved', clienttranslate('${playerName} removes a tile'), [
+            'i18n' => [ '_tile' ],
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
-            '_tileId' => _('a tile'), // TODO: specify which tile type?
-            'tileId' => $tileId,
+            '_tile' => _('a tile'),
+            'tile' => $tileId,
+            'x' => $x,
+            'y' => $y,
             'score' => $score,
-            'preserve' => [ 'playerId', 'tileId', 'score' ],
+            'preserve' => [ 'playerId', 'tile', 'x', 'y', 'score' ],
         ]);
     }
 
@@ -284,13 +284,15 @@ class Bonsai extends Table
     {
         $this->incStat(1, 'goals_renounced', $playerId);
 
-        $this->notifyAllPlayers('goalRenounced', clienttranslate('${playerName} renounces ${_goalId}'), [
-            'i18n' => [ '_goalId' ],
-            '_goalId' => clienttranslate('a goal'), // TODO
+        $goal = BonsaiMats::$GoalTiles[$goalId];
+
+        $this->notifyAllPlayers('goalRenounced', clienttranslate('${playerName} renounces ${_goal}'), [
+            'i18n' => [ '_goal' ],
+            '_goal' => $goal['log'],
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
-            'goalId' => $goalId,
-            'preserve' => [ 'playerId', 'goalId' ],
+            'goal' => $goalId,
+            'preserve' => [ 'playerId', 'goal' ],
         ]);
     }
 
@@ -298,14 +300,16 @@ class Bonsai extends Table
     {
         $this->incStat(1, 'goals_claimed', $playerId);
 
-        $this->notifyAllPlayers('goalClaimed', clienttranslate('${playerName} claims ${_goalId}'), [
-            'i18n' => [ '_goalId' ],
-            '_goalId' => clienttranslate('a goal'), // TODO
+        $goal = BonsaiMats::$GoalTiles[$goalId];
+
+        $this->notifyAllPlayers('goalClaimed', clienttranslate('${playerName} claims ${_goal}'), [
+            'i18n' => [ '_goal' ],
+            '_goal' => $goal['log'],
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
-            'goalId' => $goalId,
+            'goal' => $goalId,
             'score' => $score,
-            'preserve' => [ 'playerId', 'goalId', 'score' ],
+            'preserve' => [ 'playerId', 'goal', 'score' ],
         ]);
     }
 
@@ -380,7 +384,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_tilesReceived($playerId, $tileTypes)
+    function notify_tilesReceived($playerId, $tileTypes, $slot)
     {
         foreach ($tileTypes as $tileType)
         {
@@ -407,13 +411,18 @@ class Bonsai extends Table
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
             'tileType' => $tileTypes,
-            'preserve' => [ 'playerId', 'tileType' ],
+            'slot' => $slot,
+            'preserve' => [ 'playerId', 'tileType', 'slot' ],
         ]);
     }
 
     function notify_cardRevealed($cardId)
     {
-        $this->notifyAllPlayers('cardRevealed', clienttranslate('The next card is ${_cardId}'), [
+        // We use a null $cardId when there are no cards left.
+        // In this case, the client code still needs to animate
+        // the shifting of the remaining cards.
+        $msg = $cardId ? clienttranslate('The next card is ${_cardId}') : '';
+        $this->notifyAllPlayers('cardRevealed', $msg, [
             'i18n' => [ '_cardId' ],
             '_cardId' => clienttranslate('a card'), // TODO: description of the card
             'cardId' => $cardId,
@@ -476,56 +485,63 @@ class Bonsai extends Table
             // Report the final scores to the players
             $this->notifyAllPlayers('finalScore', '', [
                 'scores' => $scores,
-                'preserve' => [ 'scores' ],
+                'reveal' => $bonsai->getFaceDownCards(),
+                'preserve' => [ 'scores', 'reveal' ],
             ]);
 
             $this->gamestate->nextState('gameOver');
             return;
         }
 
+        $this->giveExtraTime($this->getCurrentPlayerId());
         $this->activeNextPlayer();
         $this->gamestate->nextState('nextTurn');
     }
+
+
+//////////////////////////////////////////////////////////////////////////////
+//////////// Debug functions
+////////////
+
+    function debug_setState(string $state) {
+        $bonsai = new BonsaiLogic($state);
+        $this->saveGameState($bonsai);
+    }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie
 ////////////
 
-    /*
-        zombieTurn:
-        
-        This method is called each time it is the turn of a player who has quit the game (= "zombie" player).
-        You can do whatever you want in order to make sure the turn of this player ends appropriately
-        (ex: pass).
-        
-        Important: your zombie code will be called when the player leaves the game. This action is triggered
-        from the main site and propagated to the gameserver from a server, not from a browser.
-        As a consequence, there is no current player associated to this action. In your zombieTurn function,
-        you must _never_ use getCurrentPlayerId() or getCurrentPlayerName(), otherwise it will fail with a "Not logged" error message. 
-    */
-
     function zombieTurn($state, $active_player)
     {
-    	$statename = $state['name'];
+    	$stateName = $state['name'];
+
+        // TODO: note, for now there is no zombie mode
+//        if ($state['type'] !== "activeplayer")
+            throw new feException("Zombie mode not supported at this game state: " . $stateName); // NOI18N
+
+
+        $bonsai = $this->loadGameState();
     	
-        if ($state['type'] === "activeplayer") {
-            switch ($statename) {
-                default:
-                    $this->gamestate->nextState("zombiePass");
-                	break;
-            }
-
-            return;
+        switch ($stateName) {
+            case PLAYER_TURN:
+                // Coin toss between taking a card or placing tiles
+                if (random_int(0, 1))
+                {
+                    // TODO: draw a card... but what about the choices?...
+                }
+                else
+                {
+                    // Randomly choose a legal tile placement
+                    /* TODO: implement legal move logic on server side
+                    $legalMoves = $bonsai->getLegalMoves();
+                    shuffle($legalMoves);
+                    $move = array_pop($legalMoves);
+                    */
+                }
+                break;
         }
-
-        if ($state['type'] === "multipleactiveplayer") {
-            // Make sure player is in a non blocking status for role turn
-            $this->gamestate->setPlayerNonMultiactive($active_player, '');
-            
-            return;
-        }
-
-        throw new feException("Zombie mode not supported at this game state: ".$statename);
     }
     
 ///////////////////////////////////////////////////////////////////////////////////:

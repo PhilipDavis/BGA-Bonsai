@@ -7,18 +7,17 @@
  * -----
  */
 
- body {
+body {
     /*
         Force the body to be an offsetParent because we temporarily elevate child
         elements up to the body while we're animating their position.
     */
     position: relative;
+}
 
-    /* KILL: we don't need this now
-        Set perspective so our card flip works as a card is revealed from the deck
-        and slid into the first slot.
-    perspective: 10em;
-    */
+/* Change to BGA element to allow our @container queries to work */
+#game_play_area {
+    container-type: inline-size;
 }
 
 #bon_surface {
@@ -28,7 +27,7 @@
 
 /* Player Stats */
 
-.bon_player-summary {
+.bon_player-summary .bon_stats {
     display: flex;
     flex-direction: row;
     justify-content: space-evenly;
@@ -47,6 +46,90 @@
     opacity: .25;
 }
 
+.bon_player-summary-goals {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: .125em;
+    flex-wrap: wrap;
+}
+
+.bon_player-summary .bon_goal {
+    display: inline-block;
+    background-image: url(img/bon_goals.png);
+    background-repeat: no-repeat;
+    background-size: 10.61em 10em;
+    height: 2em;
+    vertical-align: middle;
+    margin-left: .25em;
+}
+.bon_player-summary .bon_goal-3,
+.bon_player-summary .bon_goal-6,
+.bon_player-summary .bon_goal-9,
+.bon_player-summary .bon_goal-12,
+.bon_player-summary .bon_goal-15 {
+    width: 4.25425em;
+    background-position-x: 0;
+}
+.bon_player-summary .bon_goal-2,
+.bon_player-summary .bon_goal-5,
+.bon_player-summary .bon_goal-8,
+.bon_player-summary .bon_goal-11,
+.bon_player-summary .bon_goal-14 {
+    width: 3.3515em;
+    background-position-x: -4.25425em;
+}
+.bon_player-summary .bon_goal-1,
+.bon_player-summary .bon_goal-4,
+.bon_player-summary .bon_goal-7,
+.bon_player-summary .bon_goal-10,
+.bon_player-summary .bon_goal-13 {
+    width: 3.00425em;
+    background-position-x: -7.60575em;
+}
+.bon_player-summary .bon_goal-3,
+.bon_player-summary .bon_goal-2,
+.bon_player-summary .bon_goal-1 {
+    background-position-y: 0em;
+}
+.bon_player-summary .bon_goal-6,
+.bon_player-summary .bon_goal-5,
+.bon_player-summary .bon_goal-4 {
+    background-position-y: -2em;
+}
+.bon_player-summary .bon_goal-9,
+.bon_player-summary .bon_goal-8,
+.bon_player-summary .bon_goal-7 {
+    background-position-y: -4em;
+}
+.bon_player-summary .bon_goal-12,
+.bon_player-summary .bon_goal-11,
+.bon_player-summary .bon_goal-10 {
+    background-position-y: -6em;
+}
+.bon_player-summary .bon_goal-15,
+.bon_player-summary .bon_goal-14,
+.bon_player-summary .bon_goal-13 {
+    background-position-y: -8em;
+}
+
+.bon_player-summary .bon_goal:has(.bon_renounced) {
+    position: relative;
+    filter: brightness(90%) saturate(50%);
+    opacity: .66 !important;
+}
+.bon_player-summary .bon_goal .bon_renounced {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #222;
+}
+
+
+/* Summary icons */
+
 .bon_icon {
     display: inline-block;
     background-image: url(img/bon_tiles.png);
@@ -63,12 +146,12 @@
 
 .bon_icon-capacity {
     display: inline-block;
-    background-image: url(img/bonsai-capacity-placeholder.png); /* KILL */
+    background-image: url(img/bon_pot.png);
     background-repeat: no-repeat;
-    background-position-y: 0;
-    background-size: cover;
-    height: 1.75em;
+    background-size: contain;
+    height: 1.62em;
     width: 2.63em;
+    margin-top: .25em;
 }
 
 
@@ -94,8 +177,8 @@
     position: absolute;
     width: 4.66em;
     height: 6.5em;
-    top: 1em;
-    left: 1.15em;
+    top: 1.05em;
+    left: 1.05em;
     background-image: url(img/bon_cards.png);
     background-repeat: no-repeat;
     background-size: 41.94em 26em;
@@ -108,6 +191,18 @@
     background: none;
     border: solid .1em transparent;
 }
+#bon_deck .bon_card {
+    position: absolute;
+}
+#bon_deck .bon_card:nth-of-type(1) { left: -.1em; top: -.1em; }
+#bon_deck .bon_card:nth-of-type(2) { left: -.2em; top: -.2em; }
+#bon_deck .bon_card:nth-of-type(3) { left: -.3em; top: -.3em; }
+#bon_deck .bon_card:nth-of-type(4) { left: -.4em; top: -.4em; }
+#bon_deck .bon_card:nth-of-type(5) { left: -.5em; top: -.5em; }
+#bon_deck .bon_card:nth-of-type(6) { left: -.6em; top: -.6em; }
+#bon_deck .bon_card:nth-of-type(7) { left: -.7em; top: -.7em; }
+#bon_deck .bon_card:nth-of-type(8) { left: -.8em; top: -.8em; }
+#bon_deck .bon_card:nth-of-type(9) { left: -.9em; top: -.9em; }
 
 .bon_slot {
     position: absolute;
@@ -266,13 +361,13 @@
 .bon_card-40 .bon_card-face { background-position: -32.62em -13em; }
 
 /* Parchment */
-.bon_card-41 .bon_card-face { background-position:  -4.66em -19.5em; }
-.bon_card-42 .bon_card-face { background-position:  -9.32em -19.5em; }
-.bon_card-43 .bon_card-face { background-position: -13.98em -19.5em; }
-.bon_card-44 .bon_card-face { background-position: -18.64em -19.5em; }
-.bon_card-45 .bon_card-face { background-position: -23.30em -19.5em; }
-.bon_card-46 .bon_card-face { background-position: -27.96em -19.5em; }
-.bon_card-47 .bon_card-face { background-position: -32.62em -19.5em; }
+.bon_card-41 .bon_card-face { background-position:  -13.98em -19.5em; }
+.bon_card-42 .bon_card-face { background-position:  -18.64em -19.5em; }
+.bon_card-43 .bon_card-face { background-position:  -4.66em -19.5em; }
+.bon_card-44 .bon_card-face { background-position:  -9.32em -19.5em; } 
+.bon_card-45 .bon_card-face { background-position: -32.62em -19.5em; }
+.bon_card-46 .bon_card-face { background-position: -23.30em -19.5em; }
+.bon_card-47 .bon_card-face { background-position: -27.96em -19.5em; }
 
 /* Reference */
 .bon_card-48 .bon_card-face { background-position: -37.28em -19.5em; }
@@ -282,7 +377,23 @@
 /* Player */
 
 .bon_player {
-    margin-bottom: 6em;
+    position: relative;
+    padding-bottom: 2em;
+    margin-bottom: 2em;
+}
+
+#bon_opponents .bon_player {
+    background-color: rgba(255, 255, 255, .25);
+}
+#bon_opponents .bon_tree-host {
+    margin-top: 0em;
+    padding-top: 2em
+}
+
+.bon_player-name {
+    position: absolute;
+    left: 1em;
+    top: 1em;
 }
 
 .bon_tree-host {
@@ -374,6 +485,7 @@
     background-size: 17em 5em;
     height: 5em;
     width: 4.25em;
+    transform-origin: 50% 50%;
 }
 .bon_tile-1 { background-position-x:    0; }
 .bon_tile-2 { background-position-x: -4.25em; }
@@ -418,7 +530,8 @@
     transform-origin: top left;
     background-repeat: no-repeat;
     clear: both;
-    margin: 2em auto;
+    margin: 2em auto 0 auto;
+    padding-bottom: 1em;
 }
 .bon_color-blue   .bon_seishi { background-position-x: 0em; }
 .bon_color-grey   .bon_seishi { background-position-x: -5.19em; }
@@ -438,7 +551,7 @@
     border: solid .1em rgba(0,0,0,.3);
     border-radius: .5em;
 }
-.bon_mine .bon_seishi-facedown {
+#bon_player .bon_seishi-facedown {
     cursor: pointer;
 }
 .bon_seishi-facedown.bon_empty {
@@ -481,10 +594,18 @@
     left: 3.3em;
 }
 
-.bon_card-host { /* KILL/KEEP? */
+.bon_card-host {
     height: 8em;
     width: 4.66em;
     perspective: 10em;
+}
+
+.bon_reveal-cards {
+    display: flex;
+    flex-direction: row;
+    gap: .25em;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 
@@ -496,6 +617,9 @@
     flex-direction: row;
     justify-content: center;
     gap: 2em;
+    z-index: 1;
+    scroll-margin-top: 10em;
+    scroll-margin-left: 5em;
 }
 .bon_goal-set {
     display: flex;
@@ -503,6 +627,10 @@
     gap: .5em;
     align-items: center;
     flex-wrap: nowrap;
+}
+.bon_goal-set.bon_claimed .bon_goal {
+    filter: brightness(90%) saturate(50%);
+    opacity: .66;
 }
 
 .bon_goal-placeholder {
@@ -516,9 +644,11 @@
     background-repeat: no-repeat;
     background-size: 21.22em 20em;
     height: 4em;
+    transform-origin: 50% 50%;
 }
-.bon_goal.bon_ineligible  {
-    filter: brightness(90%) saturate(50%);
+.bon_goal.bon_renounced,
+.bon_goal.bon_ineligible {
+        filter: brightness(90%) saturate(50%);
     opacity: .66;
 }
 
@@ -595,10 +725,30 @@
 .bon_tooltip-text {
     margin: 1em 0;
 }
+.bon_tooltip-status {
+    margin-top: 1em;
+    border-top: solid .1em rgba(0, 0, 0, .3);
+    padding-top: 1em;
+}
 .bon_tooltip-warning {
     margin-top: 1.5em;
     font-size: .9em;
 }
+.bon_tooltip-status {
+    margin-top: 1em;
+    border-top: solid .1em rgba(0, 0, 0, .3);
+    padding-top: 1em;
+    white-space: nowrap;
+}
+.bon_tooltip-status .fa {
+    margin-right: .5em;
+}
+.bon_tooltip-status .fa-lock   { color: #666; }
+.bon_tooltip-status .fa-check  { color: #2a2; }
+.bon_tooltip-status .fa-ban    { color: #c22; }
+.bon_tooltip-status .fa-trophy { color: #eb1; }
+.bon_tooltip-status .fa-close  { color: #222; }
+
 
 
 /* Log */
@@ -707,6 +857,68 @@
 .bon_log-card-47 { background-position: -16.31em -9.75em; }
 
 
+/* Goal icons in the log */
+
+.bon_log-goal {
+    display: inline-block;
+    background-image: url(img/bon_goals.png);
+    background-repeat: no-repeat;
+    background-size: 10.61em 10em;
+    height: 2em;
+    vertical-align: middle;
+    margin-left: .25em;
+}
+.bon_log-goal.bon_goal-3,
+.bon_log-goal.bon_goal-6,
+.bon_log-goal.bon_goal-9,
+.bon_log-goal.bon_goal-12,
+.bon_log-goal.bon_goal-15 {
+    width: 4.25425em;
+    background-position-x: 0;
+}
+.bon_log-goal.bon_goal-2,
+.bon_log-goal.bon_goal-5,
+.bon_log-goal.bon_goal-8,
+.bon_log-goal.bon_goal-11,
+.bon_log-goal.bon_goal-14 {
+    width: 3.3515em;
+    background-position-x: -4.25425em;
+}
+.bon_log-goal.bon_goal-1,
+.bon_log-goal.bon_goal-4,
+.bon_log-goal.bon_goal-7,
+.bon_log-goal.bon_goal-10,
+.bon_log-goal.bon_goal-13 {
+    width: 3.00425em;
+    background-position-x: -7.60575em;
+}
+.bon_log-goal.bon_goal-3,
+.bon_log-goal.bon_goal-2,
+.bon_log-goal.bon_goal-1 {
+    background-position-y: 0em;
+}
+.bon_log-goal.bon_goal-6,
+.bon_log-goal.bon_goal-5,
+.bon_log-goal.bon_goal-4 {
+    background-position-y: -2em;
+}
+.bon_log-goal.bon_goal-9,
+.bon_log-goal.bon_goal-8,
+.bon_log-goal.bon_goal-7 {
+    background-position-y: -4em;
+}
+.bon_log-goal.bon_goal-12,
+.bon_log-goal.bon_goal-11,
+.bon_log-goal.bon_goal-10 {
+    background-position-y: -6em;
+}
+.bon_log-goal.bon_goal-15,
+.bon_log-goal.bon_goal-14,
+.bon_log-goal.bon_goal-13 {
+    background-position-y: -8em;
+}
+
+
 /* Action Bar - Resource Icons */
 
 .bon_resource {
@@ -785,7 +997,7 @@
     width: 30em;
     height: 30em;
     left: 50%;
-    top: 50%;
+    top: 20em;
     transform: translate(-50%, -50%);
     background-image: url(img/bon_scorepad.png);
     background-repeat: no-repeat;
@@ -825,6 +1037,8 @@
 
 .bon_final-score-value.bon_winner {
     position: relative;
+    width: 100%;
+    text-align: center;
 }
 .bon_final-score-value.bon_winner::after {
     position: absolute;
@@ -835,7 +1049,7 @@
     width: 2.5em;
     height: 2.6em;
     top: -0.6em;
-    left: -0.8em;
+    left: 0;
     animation: bon_circle-reveal .3s ease-out forwards;
     background-position: -5em -7.8em;
 }
@@ -918,4 +1132,78 @@
 /* Make the title on the popup dialog look better */
 .standard_popin_title {
     margin-top: 0;
+}
+
+
+/* Layout for different screen sizes */
+
+@container (min-width: 64em) {
+    #bon_surface {
+        display: grid;
+        max-width: 68em;
+        margin: auto;
+        gap: 1em;
+        grid-template-areas:
+            "goals board"
+            "goals player"
+            "goals others"
+        ;
+        grid-template-rows: 12em auto auto;
+        grid-template-columns: 1fr 4fr;
+    }
+
+    #bon_goals {
+        grid-area: goals;
+        flex-direction: column;
+        justify-content: start;
+        align-items: center;
+        min-width: 12.5em;
+    }
+
+    #bon_board {
+        grid-area: board;
+    }
+
+    #bon_player {
+        grid-area: player;
+    }
+
+    #bon_opponents {
+        grid-area: others;
+    }
+}
+
+@container (min-width: 100em) {
+    #bon_surface {
+        display: grid;
+        max-width: 100em;
+        gap: 1em;
+        grid-template-areas:
+            "goals board  others"
+            "goals player others"
+        ;
+        grid-template-rows: 12em auto auto;
+        grid-template-columns: 1fr 4fr 3fr;
+    }
+
+    #bon_goals {
+        grid-area: goals;
+        flex-direction: column;
+        justify-content: start;
+        align-items: center;
+        min-width: 12.5em;
+    }
+
+    #bon_board {
+        grid-area: board;
+    }
+
+    #bon_player {
+        grid-area: player;
+    }
+
+    #bon_opponents {
+        grid-area: others;
+        font-size: .5em;
+    }
 }

@@ -118,6 +118,16 @@ define([
         Large: 2,
     };
 
+    const GoalStatus = {
+        None: 0,         // Goal is not in play this game
+        Ineligible: 1,   // Is available but player does not meet the requirements
+        Eligible: 2,     // Is available and player meets the requirements
+        Renounced: 3,    // Is available but player has renounced this goal
+        Claimed: 4,      // Player has claimed this goal
+        ClaimedType: 5, // Player has claimed a different goal of the same colour
+        Opponent: 6,     // An opponent has claimed this goal
+    };
+
     const Goals = {
         '1': {
             type: GoalType.TotalWood,
@@ -201,16 +211,19 @@ define([
         13: { // TODO: goal logic for these three
             type: GoalType.Placement,
             size: GoalSize.Small,
+            req: 1,
             points: 7,
         },
         14: {
             type: GoalType.Placement,
             size: GoalSize.Medium,
+            req: 2,
             points: 10,
         },
         15: {
             type: GoalType.Placement,
             size: GoalSize.Large,
+            req: 2,
             points: 14,
         },
     };
@@ -249,7 +262,7 @@ define([
             // Don't simply subtract because we also remove a tile during
             // a pruning operation which doesn't affect the turn caps.
             this.placedThisTurn[type] = Math.max(0, this.placedThisTurn[type] - 1);
-            this.players[playerId].played = this.players[playerId].played.filter(move => move[1] !== x && move[2] !== y);
+            this.players[playerId].played = this.players[playerId].played.filter(move => move[1] !== x || move[2] !== y);
         }
 
         takeCardFromSlot(playerId, slot) {
@@ -282,7 +295,7 @@ define([
             bonsai.board[slot] = cardId;
             const player = this.data.players[playerId];
 
-            const { type } = Cards[cardId];
+            const { type, resource } = Cards[cardId];
             const isFaceDown = type !== CardType.Tool && type !== CardType.Growth;
 
             // Update growth (note: other stats from other card types are adjust elsewhere)
@@ -427,11 +440,14 @@ define([
         
         claimGoal(playerId, goalId) {
             this.data.players[playerId].claimed.push(goalId);
+            this.data.goalTiles = this.data.goalTiles.filter(g => g !== goalId);
         }
 
         unclaimGoal(playerId, goalId) {
             const player = this.data.players[playerId];
             player.claimed = player.claimed.filter(g => g !== goalId);
+            this.data.goalTiles.push(goalId);
+            this.data.goalTiles.sort();
         }
         
         renounceGoal(playerId, goalId) {
@@ -457,88 +473,100 @@ define([
         }
 
         getGoalStatus(goalId) {
+            const { renounced, claimed, played } = this.data.players[this.myPlayerId];
+
+            //
+            // Is the goal absent from the available set?
+            //
             if (this.data.goalTiles.indexOf(goalId) === -1) {
+                if (claimed.indexOf(goalId) >= 0) {
+                    return { goalId, status: GoalStatus.Claimed };
+                }
                 for (const [ playerId, { claimed } ] of Object.entries(this.data.players)) {
                     if (claimed.indexOf(goalId) === -1) continue;
-                    if (playerId == this.myPlayerId) {
-                        return {
-                            goalId,
-                            status: this.toolTipText['bon_goal-claimed'],
-                        };
-                    }
-                    else {
-                        return {
-                            goalId,
-                            status: this.toolTipText['bon_goal-opponent'],
-                        };
-                    }
+                    if (playerId == this.myPlayerId) continue;
+                    return { goalId, status: GoalStatus.Opponent };
                 }
+                return { goalId, status: GoalStatus.None }; // Not found
             }
 
-            // TODO: if qualify show claimed otherwise calculate amount short from the requirement
+            //
+            // Has the player already claimed a goal of the same type
+            // or renounced this goal?
+            //
+            if (claimed.some(g => Goals[g].type === Goals[goalId].type)) {
+                return { goalId, status: GoalStatus.ClaimedType };
+            }
+            if (renounced.indexOf(goalId) >= 0) {
+                return { goalId, status: GoalStatus.Renounced };
+            }
+            
+            //
+            // Does the player qualify for this goal?
+            //
+            const { type, req, size } = Goals[goalId];
+            let count = 0;
+            switch (type) {
+                case GoalType.TotalWood:
+                    count = played.reduce((sum, move) => sum + (move[0] === TileType.Wood ? 1 : 0), 0);
+                    break;
+
+                case GoalType.AdjacentLeafs:
+                    const leafs = played.filter(move => move[0] === TileType.Leaf);
+                    count = this.countAdjacentLeafs(leafs);
+                    break;
+                    
+                case GoalType.TotalFruit:
+                    count = played.reduce((sum, move) => sum + (move[0] === TileType.Fruit ? 1 : 0), 0);
+                    break;
+                    
+                case GoalType.AlignedFlowers:
+                    const flowers = played.filter(move => move[0] === TileType.Flower);
+                    const leftFlowers = flowers.filter(move => this.getProtrudingDirection(move) === -1).filter(d => d);
+                    const rightFlowers = flowers.filter(move => this.getProtrudingDirection(move) === 1).filter(d => d);
+                    count = Math.max(leftFlowers.length, rightFlowers.length);
+                    break;
+
+                case GoalType.Placement:
+                    switch (size) {
+                        case GoalSize.Small:
+                            count = played.some(move => this.getProtrudingDirection(move)) ? 1 : 0;
+                            break;
+
+                        case GoalSize.Medium:
+                            const protrudingSides = played.map(move => this.getProtrudingDirection(move)).filter(d => d);
+                            count += protrudingSides.indexOf(-1) ? 1 : 0;
+                            count += protrudingSides.indexOf(1) ? 1 : 0;
+                            break;
+
+                        case GoalSize.Large:
+                            const quadrants = played.map(move => this.getPlacementQuadrant(move)).filter(q => q != 0);
+                            if (quadrants.length > 0) count++;
+                            if ((quadrants.some(q => q === 1) && quadrants.some(q => q === 3)) ||
+                                (quadrants.some(q => q === 2) && quadrants.some(q => q === 4))
+                            ) {
+                                count++;
+                            }
+                            break;
+                    }
+                    break;
+            }
 
             return {
                 goalId,
-                status: '',
+                status: count >= req ? GoalStatus.Eligible : GoalStatus.Ineligible,
+                short: Math.max(0, req - count),
             };
         }
 
         get eligibleGoals() {
-            const { claimed, renounced, played } = this.data.players[this.myPlayerId];
-            let { goalTiles } = this.data;
-            if (!goalTiles.length) return [];
-
-            // Remove goals that this player has already renounced
-            goalTiles = goalTiles.filter(g => renounced.indexOf(g) === -1);
-
-            // Remove goals that are the same colour (type) as
-            // those already claimed by this player
-            goalTiles = goalTiles.filter(g => {
-                const { type } = Goals[g];
-                return !claimed.some(g => Goals[g].type === type);
-            });
-
-            // Remove goals that have requirements unmet by this player
-            goalTiles = goalTiles.filter(g => {
-                const { type, req, size } = Goals[g];
-                switch (type) {
-                    case GoalType.TotalWood:
-                        return played.reduce((sum, move) => sum + (move[0] === TileType.Wood ? 1 : 0), 0) >= req;
-
-                    case GoalType.AdjacentLeafs:
-                        const leafs = played.filter(move => move[0] === TileType.Leaf);
-                        return this.countAdjacentLeafs(leafs) >= req;
-
-                    case GoalType.TotalFruit:
-                        return played.reduce((sum, move) => sum + (move[0] === TileType.Fruit ? 1 : 0), 0) >= req;
-                        
-                    case GoalType.AlignedFlowers:
-                        const flowers = played.filter(move => move[0] === TileType.Flower);
-                        const leftFlowers = flowers.filter(move => this.getProtrudingDirection(move) === -1).filter(d => d);
-                        const rightFlowers = flowers.filter(move => this.getProtrudingDirection(move) === 1).filter(d => d);
-                        return leftFlowers.length && rightFlowers.length;
-
-                    case GoalType.Placement:
-                        switch (size) {
-                            case GoalSize.Small:
-                                return played.some(move => this.getProtrudingDirection(move));
-
-                            case GoalSize.Medium:
-                                const protrudingSides = played.map(move => this.getProtrudingDirection(move)).filter(d => d);
-                                return protrudingSides.indexOf(-1) >= 0 && protrudingSides.indexOf(1) >= 0;
-
-                            case GoalSize.Large:
-                                const quadrants = played.map(move => this.getPlacementQuadrant(move)).filter(q => q);
-                                return (
-                                    (quadrants.some(q => q === 1) && quadrants.some(q => q === 3)) ||
-                                    (quadrants.some(q => q === 2) && quadrants.some(q => q === 4))
-                                );
-                        }
-                        break;
-                }
-            });
-
-            return goalTiles.sort();
+            return (
+                this.data.goalTiles
+                    .map(goalId => this.getGoalStatus(goalId))
+                    .filter(s => s.status === GoalStatus.Eligible)
+                    .map(s => s.goalId)
+                    .sort()
+            );
         }
 
         getProtrudingDirection(move) {
@@ -621,6 +649,7 @@ define([
         Goals,
         GoalType,
         GoalSize,
+        GoalStatus,
         TileType,
         TileTypeName,
         ResourceType,
