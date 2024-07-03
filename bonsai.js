@@ -11,18 +11,20 @@
 define([
     "dojo",
     "dojo/_base/declare",
-    "bgagame/modules/PhilsUtils.core.v1",
-    "bgagame/modules/PhilsUtils.ui.v1",
+    "bgagame/modules/PhilsUtils/PhilsUtils.core.v1",
+    "bgagame/modules/PhilsUtils/PhilsUtils.ui.v1",
     "bgagame/modules/BonsaiLogic",
+    "bgagame/modules/BonsaiActions",
     "ebg/core/gamegui",
     "ebg/counter",
 ],
 function (
     dojo,
     declare,
-    { install, formatBlock, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
-    { transitionInAsync, transitionOutAsync },
+    { install, formatBlock, __, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
+    { delayAsync, WorkflowManager, ActionStack, SetClientState, UndoLastAction, reflow },
     { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalType, GoalSize, GoalStatus, TileType, TileTypeName, Direction },
+    { PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction },
 ) {
     const BgaGameId = 'bonsai';
 
@@ -33,739 +35,6 @@ function (
 
     const TileTypeLabel = {};
 
-    class Action {
-        constructor() {
-            this.fnDo = () => {};
-            this.fnUndo = () => {};
-            this.fnApply = obj => obj;
-        }
-        async doAsync() {
-            return this.fnDo();
-        }
-        async undoAsync() {
-            return this.fnUndo();
-        }
-        apply(obj) {
-            return this.fnApply(obj);
-        }
-    }
-
-    class ActionStack {
-        constructor(context, fnLock, fnUnlock) {
-            this.stack = [];
-            this.context = context;
-            this.fnLock = fnLock;
-            this.fnUnlock = fnUnlock;
-        }
-
-        async doAsync(action) {
-            this.fnLock.call(this.context);
-            try {
-                this.stack.push(action);
-                await action.doAsync();
-            }
-            finally {
-                this.fnUnlock.call(this.context);
-            }
-        }
-
-        async undoAllAsync() {
-            console.log('Entering undoAllAsync()');
-            while (this.stack.length) {
-                await this.undoAsync();
-            }
-            console.log('Exiting undoAllAsync()');
-        }
-
-        async undoAsync() {
-            try {
-                this.fnLock.call(this.context);
-                while (true) {
-                    const action = this.stack.pop();
-                    await action.undoAsync();
-                    if (action.isCheckpoint()) {
-                        break;
-                    }
-                }
-            }
-            finally {
-                this.fnUnlock.call(this.context);
-            }
-        }
-        
-        canUndo() {
-            return this.stack.length > 0;
-        }
-
-        // Serialize the action data for sending to the server
-        apply() {
-            // Collapse array of action data into an object...
-            // and collapse duplicate keys into an array
-            const array = this.stack.reduce((array, action) => action.apply(array), []);
-            const obj = array.reduce((obj, { action, data }) => {
-                if (data === undefined) {
-                    throw new Error(`Missing data property while applying action '${action}'`);
-                }
-                const prev = obj[action];
-                if (prev === undefined) {
-                    obj[action] = [ data ];
-                }
-                else {
-                    obj[action] = [ ...prev, data ];
-                }
-                return obj;
-            }, {});
-
-            // Finally, collapse singleton arrays for convenience
-            for (const [ key, value ] of Object.entries(obj)) {
-                if (value.length === 1) {
-                    obj[key] = value[0];
-                }
-            }
-            return obj;
-        }
-
-        clear() {
-            this.stack.splice(0, this.stack.length);
-        }
-    }
-
-    class PlaceTileAction extends Action {
-        constructor(playerId, tileDivId, tileType, x, y, r) {
-            super();
-            this.playerId = playerId;
-            this.tileType = tileType;
-            this.x = x;
-            this.y = y;
-            this.r = r;
-            this.tileId = null;
-            this.divId = tileDivId;
-
-            // Determine the tile's position in inventory in case we need to put it back (i.e. undo)
-            this.index = gameui.getSiblingIndex(tileDivId);
-        }
-
-        async doAsync() {
-            //
-            // Decrement the player's inventory
-            //
-            bonsai.adjustPlayerInventory(this.playerId, this.tileType, -1);
-
-            //
-            // Select the tile from the player's inventory
-            //
-            const { xEm, yEm } = gameui.emsFromCoords(this);
-
-            // If a tile would rotate more than 180 degrees,
-            // switch it to rotate negative degrees. In other
-            // words, choose the most efficient rotation.
-            const rotation = this.r * 60;
-            const deg = rotation > 180 ? rotation - 360 : rotation;
-
-            //
-            // Create a new hidden tile in the Tree at the correct location
-            // and then make it appear to animate from the inventory slot
-            // into the tree.
-            //
-            const tileDiv = document.getElementById(this.divId);
-
-            const placeholderDiv = gameui.replaceInventoryTileWithPlaceholder(tileDiv);
-            const destDiv = gameui.createTileInTree(this.playerId, this.tileType, this.x, this.y, this.r, false);
-
-            const srcRect = tileDiv.getBoundingClientRect();
-            const destRect = destDiv.getBoundingClientRect();
-            const srcMidX = Math.round(srcRect.left + srcRect.width / 2);
-            const srcMidY = Math.round(srcRect.top + srcRect.height / 2);
-            const destMidX = Math.round(destRect.left + destRect.width / 2);
-            const destMidY = Math.round(destRect.top + destRect.height / 2);
-            const deltaX = destMidX - srcMidX;
-            const deltaY = destMidY - srcMidY;
-
-            destDiv.style.transform = `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`;
-            destDiv.classList.remove('bon_hidden');
-            placeholderDiv.innerHTML = '';
-
-            const slidePromise = destDiv.animate({
-                transform: [
-                    `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`,
-                    `translate(calc(${xEm}em - 50%), calc(${yEm}em - 50%)) scale(.975) rotate(${deg}deg)`,
-                ],
-            }, {
-                duration: 500,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            const closeGapPromise = placeholderDiv.animate({
-                width: [ 0 ],
-            } , {
-                delay: 100,
-                duration: 200,
-                easing: 'ease-out',
-                fill: 'forwards',
-            });
-
-            await Promise.all([
-                slidePromise,
-                closeGapPromise,
-            ]);
-
-            placeholderDiv.parentElement.removeChild(placeholderDiv);
-
-            //
-            // Update tree information
-            //
-            bonsai.placeTile(this.playerId, this.tileType, this.x, this.y, this.r);
-            gameui.adjustPlayerPlaced(this.playerId, this.tileType, 1);
-
-            // Grow the tree / host
-            gameui.adjustTreeSize(this.playerId);
-
-            // Update the tool tips in case goal progressions changed
-            gameui.updateGoalTooltips();
-        }
-
-        async undoAsync() {
-            //
-            // Update tree information
-            //
-            bonsai.removeTile(this.playerId, this.x, this.y);
-            gameui.adjustPlayerPlaced(this.playerId, this.tileType, -1);
-
-            //
-            // Open a gap in inventory where the tile came from
-            //
-            const destDiv = gameui.createTilePlaceholderInInventoryAtIndex(this.playerId, this.index);
-            const openGapPromise = destDiv.animate({
-                width: [ '4.25em' ], // the width of a tile
-            }, {
-                delay: 50,
-                duration: 50,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            const { xEm, yEm } = gameui.emsFromCoords(this);
-            const rotation = this.r * 60;
-            const deg = rotation > 180 ? rotation - 360 : rotation;
-
-            //
-            // Animate the tile from player's tree back to their inventory
-            //
-            const tileId = `bon_tile-${this.playerId}-${this.x}-${this.y}`;
-            const tileDiv = document.getElementById(tileId);
-
-            const srcRect = tileDiv.getBoundingClientRect();
-            const destRect = destDiv.getBoundingClientRect();
-            const srcMidX = Math.round(srcRect.left + srcRect.width / 2);
-            const srcMidY = Math.round(srcRect.top + srcRect.height / 2);
-            const destMidX = Math.round(destRect.left + destRect.width / 2);
-            const destMidY = Math.round(destRect.top + destRect.height / 2);
-            const deltaX = destMidX - srcMidX;
-            const deltaY = destMidY - srcMidY;
-
-            const slidePromise = tileDiv.animate({
-                transform: [
-                    `translate(calc(${xEm}em - 50%), calc(${yEm}em - 50%)) scale(.975) rotate(${deg}deg)`,
-                    `translate(calc(${xEm}em + ${deltaX}px - 50%), calc(${yEm}em + ${deltaY}px - 50%)) scale(.975) rotate(0deg)`,
-                ],
-            }, {
-                duration: 200,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            await Promise.all([
-                slidePromise,
-                openGapPromise,
-            ]);
-
-            //
-            // Remove the placeholder from the DOM
-            //
-            const newTileDiv = gameui.createTile(this.playerId, this.tileType, destDiv);
-            newTileDiv.id = this.divId;
-            destDiv.replaceWith(newTileDiv);
-            tileDiv.parentElement.removeChild(tileDiv);
-
-            gameui.destroyAllVacancies();
-
-            // Shrink the tree / host
-            gameui.adjustTreeSize(this.playerId);
-
-            //
-            // Increment the player's inventory
-            //
-            bonsai.adjustPlayerInventory(this.playerId, this.tileType, 1);
-
-            // Update the tool tips in case goal progressions changed
-            gameui.updateGoalTooltips();
-        }
-
-        isCheckpoint() {
-            return true;
-        }
-
-        apply(array) {
-            return [
-                ...array,
-                {
-                    action: 'place',
-                    data: [ this.tileType, this.x, this.y, this.r ],
-                },
-            ];
-        }
-    }
-
-    class TakeCardAction extends Action {
-        constructor(playerId, cardId, slot) {
-            super();
-            this.playerId = playerId;
-            this.cardId = cardId;
-            this.slot = slot;
-            this.tileTypes = [];
-
-            // Slot 0 yields nothing and Slot 1 offers the player
-            // a choice, which is resovled in a separate action.
-            if (slot === 2) {
-                this.tileTypes.push(TileType.Wood, TileType.Flower);
-            }
-            else if (slot === 3) {
-                this.tileTypes.push(TileType.Leaf, TileType.Fruit);
-            }
-        }
-
-        async doAsync() {
-            //
-            // Create a div in place that will hold the card.
-            // We need this as an animation target so that the
-            // card slides to the correct place.
-            //
-            const hostDivId = `bon_card-host-${this.cardId}`;
-            const cardType = Cards[this.cardId].type;
-            const destDivId =
-                cardType === CardType.Tool
-                    ? `bon_seishi-lhs-${this.playerId}`
-                    : cardType === CardType.Growth
-                        ? `bon_seishi-rhs-${this.playerId}`
-                        : `bon_seishi-facedown-${this.playerId}`
-            ;
-            const isFaceDown = cardType !== CardType.Tool && cardType !== CardType.Growth;
-            createFromTemplate('bonsai_Templates.cardHost', {
-                CARD_ID: this.cardId,
-            }, destDivId);
-            gameui.placeInElement(hostDivId, destDivId); // TODO: game pref to order cards or not
-            const cardDivId = `bon_card-${this.cardId}`;
-            gameui.raiseElementToBody(cardDivId);
-
-            //
-            // Move the card to the Player's Seishi or face down
-            // depending on the type of card
-            //
-            const cardPromise = (async () => {
-                await gameui.slideToObjectAsync(cardDivId, hostDivId, 800);
-
-                // Put the card into the card host and update game state
-                gameui.placeInElement(cardDivId, hostDivId);
-
-                // Update game state
-                bonsai.takeCardFromSlot(this.playerId, this.slot);
-
-                if (isFaceDown) {
-                    await gameui.delayAsync(200);
-                    await transitionInAsync(cardDivId, 'bon_card-face-down', 400);
-                }
-            })();
-
-            await cardPromise; // TODO: collapse
-
-            if (this.playerId == gameui.myPlayerId) {
-                if (cardType === CardType.Tool) {
-                    gameui.adjustPlayerCapacity(this.playerId, 2);
-                }
-            }
-        }
-
-        async undoAsync() {
-            if (this.playerId == gameui.myPlayerId) {
-                if (this.cardType === CardType.Tool) {
-                    gameui.adjustPlayerCapacity(this.playerId, -2);
-                }
-            }
-
-            //
-            // Move the card back to the board
-            //
-            const cardDivId = `bon_card-${this.cardId}`;
-            gameui.raiseElementToBody(cardDivId);
-            const cardPromise = (async () => {
-                await gameui.slideToObjectAsync(cardDivId, `bon_slot-${this.slot}`, 400);
-
-                await gameui.delayAsync(100);
-                await transitionOutAsync(cardDivId, 'bon_card-face-down', 200);
-
-                // Put the card into the card host and update gate state
-                gameui.placeInElement(cardDivId, `bon_slot-${this.slot}`);
-
-                // Revert the game state
-                bonsai.returnCardToSlot(this.playerId, this.cardId, this.slot);
-
-                // Remove the temporary card host
-                const hostDivId = `bon_card-host-${this.cardId}`;
-                const hostDiv = document.getElementById(hostDivId);
-                hostDiv.parentElement.removeChild(hostDiv);
-
-                // TODO: fix up face down pile (empty/not)
-                // TODO: fix up face down pile tool tips
-            })();
-
-           await cardPromise; // TODO: collapse
-        }
-
-        isCheckpoint() { return true; }
-
-        apply(array) {
-            return [
-                ...array,
-                {
-                    action: 'take',
-                    data: this.cardId,
-                },
-            ];
-        }
-    }
-
-    class ReceiveTilesAction extends Action {
-        constructor(playerId, tileTypes, slot, name, userChose = false) {
-            super();
-            this.playerId = playerId;
-            this.tileTypes = tileTypes;
-            this.slot = slot;
-            this.name = name;
-            this.userChose = userChose;
-            this.randomValue = Math.random().toString(28).substring(2);
-        }
-
-        async doAsync() {
-            await Promise.all(
-                this.tileTypes.map(async (tileType, index) => {
-                    await gameui.delayAsync(100 * index);
-
-                    const tileId = `${this.randomValue}-${tileType}-${index}`;
-                    const divId = `bon_tile-${tileId}`;
-                    createFromTemplate('bonsai_Templates.tile', {
-                        TILE_ID: tileId,
-                        TYPE: tileType,
-                        X_EM: 2.5,
-                        Y_EM: 3.25,
-                        DEG: 0,
-                    }, `bon_slot-${this.slot}`);
-                    gameui.placeOnObject(divId, `bon_slot-${this.slot}`);
-                    gameui.raiseElementToBody(divId);
-                    
-                    // Animate the width of the placeholder growing
-                    const hostDiv = gameui.createTilePlaceholderInInventory(this.playerId, tileType);
-                    await hostDiv.animate({
-                        width: [ '4.25em' ], // the width of a tile
-                    }, {
-                        duration: 100,
-                        easing: 'ease-out',
-                        fill: 'forwards',
-                    }).finished;
-
-                    // Slide the tile and make room in inventory at the same time
-                    await gameui.slideToObjectAsync(divId, hostDiv);
-
-                    // Remove the placeholder
-                    const div = document.getElementById(divId);
-                    hostDiv.replaceWith(div);
-                    div.style.left = 0;
-                    div.style.top = 0;
-
-                    // Increment inventory when the tile has arrived
-                    bonsai.adjustPlayerInventory(this.playerId, tileType, 1);
-                })
-            );
-        }
-
-        async undoAsync() {
-            await Promise.all(
-                this.tileTypes.map(async (tileType, index) => {
-                    await gameui.delayAsync(100 * index);
-
-                    const tileId = `${this.randomValue}-${tileType}-${index}`;
-                    const divId = `bon_tile-${tileId}`;
-                    const div = document.getElementById(divId);
-
-                    const placeholderDiv = gameui.replaceInventoryTileWithPlaceholder(div);
-                    gameui.raiseElementToBody(div);
-
-                    const closeGapPromise = placeholderDiv.animate({
-                        width: [ 0 ],
-                    }, {
-                        delay: 100,
-                        duration: 100,
-                        easing: 'ease-out',
-                        fill: 'forwards',
-                    }).finished;
-
-                    // Decrease inventory, and then slide it back to the board slot
-                    bonsai.adjustPlayerInventory(this.playerId, tileType, -1);
-                    const slidePromise = gameui.slideToObjectAsync(divId, `bon_slot-${this.slot}`);
-
-                    await Promise.all([
-                        slidePromise,
-                        closeGapPromise,
-                    ]);
-
-                    // Now can destroy the sprite and placeholder
-                    const tileDiv = document.getElementById(divId);
-                    tileDiv.parentElement.removeChild(tileDiv);
-                    placeholderDiv.parentElement.removeChild(placeholderDiv);
-                })
-            );
-        }
-
-        isCheckpoint() { return false; }
-
-        apply(array) {
-            // Only apply this action's data if the user had to make a choice
-            // (because that choice needs to be sent to the server. All other
-            // data can be computed on the server).
-            if (this.userChose) {
-                return [
-                    ...array,
-                    {
-                        action: this.name,
-                        data: this.tileTypes,
-                    },
-                ];
-            }
-            else {
-                return array;
-            }
-        }
-    }
-
-    class RenounceGoalAction extends Action {
-        constructor(playerId, goalId) {
-            super();
-            this.playerId = playerId;
-            this.goalId = goalId;
-        }
-
-        async doAsync() {
-            if (this.playerId == gameui.myPlayerId) {
-                const divId = `bon_goal-${this.goalId}`;
-                const goalDiv = document.getElementById(divId);
-                goalDiv.classList.add('bon_ineligible');
-                goalDiv.classList.remove('bon_selectable');
-            }
-
-            bonsai.renounceGoal(this.playerId, this.goalId);
-            await gameui.animateGoalRenouncementAsync(this.playerId, this.goalId);
-            gameui.updateGoalTooltips();
-        }
-
-        async undoAsync() {
-            if (this.playerId == gameui.myPlayerId) {
-                const divId = `bon_goal-${this.goalId}`;
-                const goalDiv = document.getElementById(divId);
-                goalDiv.classList.remove('bon_ineligible');
-            }
-
-            bonsai.unrenounceGoal(this.playerId, this.goalId);
-            await gameui.animateGoalUnRenouncementAsync(this.playerId, this.goalId);
-            gameui.updateGoalTooltips();
-        }
-
-        isCheckpoint() { return false; }
-
-        apply(array) {
-            return [
-                ...array,
-                {
-                    action: 'renounce',
-                    data: this.goalId,
-                },
-            ];
-        }
-    }
-
-    class ClaimGoalAction extends Action {
-        constructor(playerId, goalId) {
-            super();
-            this.playerId = playerId;
-            this.goalId = goalId;
-        }
-
-        async doAsync() {
-            const divId = `bon_goal-${this.goalId}`;
-            const goalDiv = document.getElementById(divId);
-            goalDiv.classList.remove('bon_selectable');
-
-            await gameui.animateGoalToPlayerBoardAsync(this.playerId, this.goalId);
-
-            bonsai.claimGoal(this.playerId, this.goalId);
-
-            if (this.playerId === gameui.myPlayerId) {
-                gameui.updateGoalTooltips();
-
-                const { type } = Goals[this.goalId];
-                const setDiv = document.getElementById(`bon_goal-set-${type}`);
-                setDiv.classList.add('bon_claimed');
-            }
-        }
-
-        async undoAsync() {
-            const divId = `bon_summary-goal-${this.playerId}-${this.goalId}`;
-            const goalDiv = document.getElementById(divId);
-
-            await gameui.animateGoalFromPlayerBoardAsync(this.playerId, this.goalId);
-
-            goalDiv.classList.add('bon_selectable');
-
-            bonsai.unclaimGoal(this.playerId, this.goalId);
-
-            if (this.playerId === gameui.myPlayerId) {
-                gameui.updateGoalTooltips();
-
-                const { type } = Goals[this.goalId];
-                const setDiv = document.getElementById(`bon_goal-set-${type}`);
-                setDiv.classList.remove('bon_claimed');
-            }
-        }
-
-        isCheckpoint() { return false; }
-
-        apply(array) {
-            return [
-                ...array,
-                {
-                    action: 'claim',
-                    data: this.goalId,
-                },
-            ];
-        }
-    }
-
-    class DiscardExcessTileAction extends Action {
-        constructor(playerId, tileType, tileDivId) {
-            super();
-            this.playerId = playerId;
-            this.tileType = tileType;
-            this.tileDivId = tileDivId;
-
-            // Store the index so we can put it back in the same place on an undo
-            this.index = gameui.getSiblingIndex(tileDivId);
-        }
-
-        async doAsync() {
-            // Unhighlight all the other tiles
-            const tileDiv = document.getElementById(this.tileDivId);
-            tileDiv.classList.add('bon_selected');
-            const placeholderDiv = gameui.replaceInventoryTileWithPlaceholder(tileDiv);
-            gameui.makeTilesUnselectable();
-
-            await gameui.delayAsync(100);
-
-            // Fade out the tile
-            const fadePromise = tileDiv.animate({
-                opacity: [ 1, 0 ],
-                transform: [ 'scale(1)', 'scale(.5)' ],
-            }, {
-                duration: 200,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            const closeGapPromise = placeholderDiv.animate({
-                width: [ '4.25em', '0em' ],
-            }, {
-                delay: 100,
-                duration: 200,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            await Promise.all([
-                fadePromise,
-                closeGapPromise,
-            ]);
-
-            // Remove the tile
-            placeholderDiv.parentElement.removeChild(placeholderDiv);
-
-            // Update internal state
-            bonsai.adjustPlayerInventory(this.playerId, this.tileType, -1);
-        }
-
-        async undoAsync() {
-            // Open a spot for the tile
-            const destDiv = gameui.createTilePlaceholderInInventoryAtIndex(this.playerId, this.index);
-            await destDiv.animate({
-                width: [ '0em', '4.25em' ],
-            }, {
-                duration: 100,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            // Create the tile and fade it in
-            const tileDiv = gameui.createTile(this.playerId, this.tileType, destDiv);
-            await tileDiv.animate({
-                opacity: [ 0, 1 ],
-                transform: [ 'scale(.5)', 'scale(1)' ],
-            }, {
-                duration: 200,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            // Get rid of the placeholder
-            destDiv.replaceWith(tileDiv);
-
-            // Update state
-            bonsai.adjustPlayerInventory(this.playerId, this.tileType, 1);
-        }
-
-        isCheckpoint() { return false; }
-
-        apply(array) {
-            return [
-                ...array,
-                {
-                    action: 'discard',
-                    data: this.tileType,
-                },
-            ];
-        }
-    }
-
-
-    // Helper class to simplify workflow generators
-    class SetClientState {
-        constructor(name, description, args = {}) {
-            this.name = name;
-            this.description = description;
-            this.args = args;
-        }
-    }
-
-    // Helper class to simplify workflow generators
-    class UndoLastAction {}
-
-
-    // TODO: move into core
-    // Helper function to put HTML markup into translated strings
-    function __(text) {
-        return bga_format(_(text), {
-            '/': t => `<i>${t}</i>`,
-            '*': t => `<b>${t}</b>`,
-            '_': t => `<u>${t}</u>`,
-            '|': t => `<br/>`,
-        });
-    };
 
     return declare(`bgagame.${BgaGameId}`, ebg.core.gamegui, {
         constructor() {
@@ -776,29 +45,19 @@ function (
             this.capacity = {};  // Maximum tiles the player is allowed to have
             this.scoreCounter = {};
 
-            // TODO: move to core
-            Object.defineProperties(this, {
-                currentState: {
-                    get() {
-                        return this.gamedatas.gamestate.name;
-                    },
-                },
-            });
-
             this.resetClientStateArgs();
             this.actionStack = new ActionStack(this, this.lockClient, this.unlockClient);
+            this.workflowManager = new WorkflowManager(this, this.actionStack);
         },
         
         setup(gamedata)
         {            
-            // Hook into this object and overwrite default BGA functions with enhanced functions
-            install(dojo, this, { debug: true }); // TODO: turn off debug
-
             console.log('Starting game setup', gamedata);
-            
-            this.myPlayerId = this.player_id;
-            this.initPreferencesObserver();
 
+            // Hook into this object and overwrite default BGA functions with enhanced functions
+            // Note: on Studio, the complete server state is sent to the client
+            install(dojo, this, { debug: !!gamedata.state });
+            
             const { data, scores } = gamedata;
             bonsai = new BonsaiLogic(data, this.myPlayerId);
             window.bonsai = bonsai; // For convenience during debugging
@@ -841,11 +100,16 @@ function (
                 this.createGoalTilePlaceholder(goalId, claimed);
             }
 
+            const sortMeFirst = (a, b) => {
+                if (a[0] == this.myPlayerId) return -1;
+                if (b[0] == this.myPlayerId) return 1;
+                // For spectator mode, the order doesn't really matter
+                return Number(a[0]) - Number(b[0]);
+            }
+
             // Setting up player boards
             const isGameOver = gamedata.gamestate.id == "99";
-            this.setupPlayer(this.myPlayerId, bonsai.players[this.myPlayerId], scores[this.myPlayerId].total, isGameOver);
-            for (const [ playerId, player ] of Object.entries(bonsai.players)) {
-                if (playerId == this.myPlayerId) continue;
+            for (const [ playerId, player ] of Object.entries(bonsai.players).sort(sortMeFirst)) {
                 this.setupPlayer(playerId, player, scores[playerId].total, isGameOver);
             }
 
@@ -863,7 +127,6 @@ function (
             // TODO: allow player to flip their pot? (maybe only at the start...?)
             // TODO: game preference to sort Seishi cards by type or not
             // TODO: have variable speeds... 
-            // TODO: make the undo action faster than the do action
 
             const playerInventoryTilesDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);
             playerInventoryTilesDiv.addEventListener('click', e => {
@@ -874,38 +137,6 @@ function (
             });
 
             this.updateGoalTooltips();
-
-            this.setupNotifications();
-        },
-
-        // TODO: move into core
-        initPreferencesObserver() {
-            dojo.query('.preference_control').on('change', e => {
-                const match = e.target?.id.match(/^preference_[cf]ontrol_(\d+)$/);
-                if (!match) return;
-                const prefId = match[1];
-                const { value } = e.target;
-                this.prefs[prefId].value = parseInt(value, 10);
-                this.onPreferenceChange(this.prefs[prefId]);
-            });
-        },
-        
-        // TODO: move into core
-        onPreferenceChange(pref) {
-            // Apply the CSS of the chosen preference value
-            // (Unless it's a default pref, which appears to be
-            // delivered as an array and without CSS class names)
-            if (typeof pref.values === 'object' && typeof pref.values.length === 'number') return;
-            const html = document.getElementsByTagName('html')[0];
-            for (const [ value, settings ] of Object.entries(pref.values)) {
-                if (typeof settings.cssPref !== 'string') continue;
-                if (value == pref.value) {
-                    html.classList.add(settings.cssPref);
-                }
-                else {
-                    html.classList.remove(settings.cssPref);
-                }
-            }
         },
 
         setupPlayer(playerId, player, score, isGameOver) {
@@ -923,7 +154,7 @@ function (
                 const divId = `bon_player-${playerId}`;
                 const playerDiv = document.getElementById(divId);
                 const nameDiv = playerDiv.querySelector('.bon_player-name');
-                nameDiv.innerText = gameui.gamedatas.players[playerId].name;
+                nameDiv.innerText = gameui.gamedatas.players[playerId]?.name || '';
             }
 
             // Add the tree tiles of this user
@@ -934,7 +165,7 @@ function (
                     this.createTileInTree(playerId, type, x, y, r);
                 }
             }
-            this.adjustTreeSize(playerId);
+            this.adjustTreeSizeAndPos(playerId);
 
             this.scoreCounter[playerId] = new ebg.counter();
             this.scoreCounter[playerId].create(`player_score_${playerId}`);
@@ -1042,12 +273,13 @@ function (
 
         calculateDeckHeight() {
             const { drawPile } = bonsai.data;
-            if (drawPile > 35) return 8;
-            if (drawPile > 25) return 7;
-            if (drawPile > 15) return 6;
-            if (drawPile > 10) return 5;
+            if (drawPile > 35) return 9;
+            if (drawPile > 25) return 8;
+            if (drawPile > 15) return 7;
+            if (drawPile > 10) return 6;
+            if (drawPile > 7) return 5;
             if (drawPile > 5) return 4;
-            if (drawPile > 2) return 3;
+            if (drawPile > 3) return 3;
             if (drawPile > 1) return 2;
             if (drawPile > 0) return 1;
             return 0;
@@ -1101,6 +333,10 @@ function (
         ///////////////////////////////////////////////////
         //// UI methods
 
+        // Given an (x,y) position in the tree, return the
+        // EM coordinates of that tile in the tree.
+        // Since the play surface is hex-based, we offset
+        // odd rows by -1/2
         emsFromCoords({ x, y }) {
             return {
                 xEm: (x - 1) * 4.25 + (y % 2 ? 0 : 2.125),
@@ -1157,6 +393,13 @@ function (
             }, `bon_player-summary-goals-${playerId}`);
             const divId = `bon_summary-goal-${playerId}-${goalId}`;
             const goalDiv = document.getElementById(divId);
+
+            /* KILL - there is an issue here I still need to investigate
+            if (!goalDiv) {
+                debugger; // KILL
+            }
+            */
+
             if (!claimed) {
                 goalDiv.insertAdjacentHTML('beforeend', '<div class="bon_renounced fa fa-close fa-lg"></div>');
             }
@@ -1275,12 +518,15 @@ function (
         },
 
         replaceInventoryTileWithPlaceholder(tileDiv) {
+            if (!tileDiv) {
+                throw new Error('Missing div');
+            }
             const divId = `bon_tile-placeholder-${Math.random().toString(28).substring(2)}`;
             createFromTemplate('bonsai_Templates.tileHost', {
                 DIV_ID: divId,
             }, tileDiv, { placement: 'beforeend' });
             const placeholderDiv = document.getElementById(divId);
-            placeholderDiv.style.width = '4.25em';
+            placeholderDiv.style.width = '4.25em'; // TODO: how was placeholder null?
             placeholderDiv.parentElement.removeChild(placeholderDiv);
             tileDiv.replaceWith(placeholderDiv);
             placeholderDiv.appendChild(tileDiv);
@@ -1294,7 +540,7 @@ function (
 
             const { xEm, yEm } = this.emsFromCoords({ x, y });
             createFromTemplate('bonsai_Templates.vacancy', {
-                ID: divId,
+                DIV_ID: divId,
                 X: x,
                 Y: y,
                 X_EM: xEm,
@@ -1336,7 +582,9 @@ function (
             };
         },
 
-        adjustTreeSize(playerId) {
+        adjustTreeSizeAndPos(playerId) {
+            if (!playerId) playerId = this.myPlayerId;
+
             const hostDiv = document.getElementById(`bon_tree-host-${playerId}`);
             const rect = hostDiv.getBoundingClientRect();
 
@@ -1347,7 +595,6 @@ function (
             const potDiv = hostDiv.querySelector('.bon_pot');
             const potRect = potDiv.getBoundingClientRect();
             const minHeight = Math.ceil(potRect.height * 2);
-            const minWidth = Math.ceil(potRect.width); // TODO
             const extentBelowPot = Math.max(0, (y + height - 1) - (potRect.y + potRect.height - 1));
 
             //console.log(x, y, width, height); // KILL
@@ -1363,6 +610,34 @@ function (
 
             const treeDiv = document.getElementById(`bon_tree-${playerId}`);
             treeDiv.style.bottom = `${extentBelowPot}px`;
+
+// TODO: try a new strategy where we make a div be exactly the size
+// of the bounding box of the tree and allow the browser to center it
+
+            // Reposition the pot horizonally when the tree grows to within one tile-width of the sides
+            const aTileDiv = hostDiv.querySelector('.bon_tile');
+            if (!aTileDiv) {
+                // The game just started if there are no tiles,
+                // so we don't need to reposition the tree.
+                return;
+            }
+
+            const tileWidth = Math.round(aTileDiv.getBoundingClientRect().width);
+            const x1 = x - tileWidth;
+            const x2 = x + width + tileWidth - 1;
+            const leftOverflow = Math.round(Math.max(0, rect.x - x1));
+            const rightOverflow = Math.round(Math.max(0, x2 - rect.right));
+            if (rightOverflow && !leftOverflow) { // TODO: instead of !leftOverflow, should check roomToShiftLeft
+                // We're too close to the right edge; shift left
+                treeDiv.style.left = `calc(50% - ${rightOverflow}px)`;
+            }
+            else if (leftOverflow && !rightOverflow) {
+                treeDiv.style.left = `calc(50% + ${leftOverflow}px)`;
+            }
+            else if (leftOverflow && rightOverflow) {
+                treeDiv.style.left = `50%`;
+                // TODO: scale the image down to fit exactly (minus the one-tile padding)
+            }
         },
 
 
@@ -1435,11 +710,11 @@ function (
                         }
                         this.addActionButton(`bon_button-inventory-tile-stop`, _('Stop'), () => this.onClickStopPlacingTiles()); 
                     }
-                    this.addActionButton(`bon_button-inventory-tile-cancel`, _('Cancel'), () => this.onClickCancelInventoryTile(), null, false, 'red'); 
+                    this.addActionButton(`bon_button-inventory-tile-cancel`, _('Cancel'), () => this.onClickCancel(), null, false, 'red'); 
                     break;
 
                 case 'client_chooseLocation':
-                    this.addActionButton(`bon_button-cancel-location`, _('Cancel'), () => this.onClickCancelLocation(), null, false, 'red'); 
+                    this.addActionButton(`bon_button-cancel-location`, _('Cancel'), () => this.onClickCancel(), null, false, 'red'); 
                     break;
 
                 case 'client_cultivateConfirm':
@@ -1484,7 +759,7 @@ function (
 
         addTileButton(tileType) {
             const divId = `bon_button-choose-${tileType}`;
-            this.addActionButton(divId, TileTypeLabel[tileType], () => this.onClickChooseTile(tileType), null, false, 'gray');
+            this.addActionButton(divId, TileTypeLabel[tileType], () => this.onClickChooseTileType(tileType), null, false, 'gray');
             const buttonDiv = document.getElementById(divId);
             buttonDiv.insertAdjacentHTML('afterbegin', `<div id="bon_button-icon-${tileType}" class="bon_button-icon"></div>`);
             return buttonDiv;
@@ -1513,10 +788,7 @@ function (
             this.clientStateArgs.locked = false;
         },
 
-        delayAsync(duration) {
-            return new Promise(resolve => setTimeout(resolve, duration));
-        },
-
+        // KILL?
         slideToObjectAsync(item, dest, duration = 500) {
             // TODO: can make animation speed a game preference
             return new Promise(resolve => {
@@ -1558,15 +830,6 @@ function (
             div.style.position = 'absolute';
             div.style.zIndex = '100';
             body.appendChild(div);
-        },
-
-        getSiblingIndex(elementId) {
-            let index = 0;
-            let element = document.getElementById(elementId);
-            while (element = element?.previousElementSibling) {
-                index++;
-            }
-            return index;
         },
 
         adjustPlayerPlaced(playerId, tileType, delta) {
@@ -1643,13 +906,13 @@ function (
             this.clientStateArgs.hasLegalMoves = Object.values(this.clientStateArgs.legalMoves).some(lm => Object.keys(lm).length > 0);
         },
 
-        showLegalMoves(selectedTileType) {
+        showLegalMoves(legalMoves, selectedTileType) {
             this.destroyAllVacancies();
 
             const playerId = this.getActivePlayerId();
             for (const tileType of Object.values(TileType)) {
                 if (selectedTileType && selectedTileType !== tileType) continue;
-                for (const key of Object.keys(this.clientStateArgs.legalMoves[tileType])) {
+                for (const key of Object.keys(legalMoves[tileType])) {
                     const { x, y } = parseKey(key);
                     this.createVacancy(playerId, x, y);
                 }
@@ -1671,7 +934,7 @@ function (
         },
 
         async animateCardToNextSlotAsync(delay, toSlot, cardId) {
-            await this.delayAsync(delay);
+            await delayAsync(delay);
             const divId = `bon_card-${cardId}`;
             const destDivId = `bon_slot-${toSlot}`;
             this.raiseElementToBody(divId);
@@ -1703,7 +966,7 @@ function (
 
                 promises.push((async () => {
                     // Wait for the other cards to have started their animations
-                    await this.delayAsync(slot * 100);
+                    await delayAsync(slot * 100);
 
                     // Change the height of the deck, if necessary
                     this.updateDeck();
@@ -1727,14 +990,14 @@ function (
                     // Slide the card host into the first slot
                     this.raiseElementToBody(hostDiv);
                     cardDiv.style.transition = 'transform 400ms ease-out';
-                    gameui.reflow();
+                    reflow();
 
                     // Start the slide
                     const slidePromise = this.slideToObjectAsync(hostDiv, 'bon_slot-0');
 
                     // Start flipping the card over
                     const flipPromise = new Promise(async resolve => {
-                        await this.delayAsync(50);
+                        await delayAsync(50);
                         cardDiv.classList.remove('bon_card-face-down');
                         cardDiv.addEventListener('transitionend', resolve, { once: true });
                     });
@@ -1755,104 +1018,6 @@ function (
             await Promise.all(promises);
         },
 
-        async animateGoalToPlayerBoardAsync(playerId, goalId) {
-            // Create a hidden goal tile on the player summary board
-            const destDiv = this.createSummaryGoalTilePlaceholder(playerId, goalId, false);
-
-            // Animate the visible goal tile to the player board
-            const goalDiv = document.getElementById(`bon_goal-${goalId}`);
-            const goalRect = goalDiv.getBoundingClientRect();
-            const destRect = destDiv.getBoundingClientRect();
-            const goalMidX = Math.round(goalRect.left + goalRect.width / 2);
-            const goalMidY = Math.round(goalRect.top + goalRect.height / 2);
-            const destMidX = Math.round(destRect.left + destRect.width / 2);
-            const destMidY = Math.round(destRect.top + destRect.height / 2);
-            const deltaX = destMidX - goalMidX;
-            const deltaY = destMidY - goalMidY;
-            const scale = destRect.height / goalRect.height;
-
-            goalDiv.style.zIndex = 100;
-            await goalDiv.animate({
-                transform: [
-                    `translate(${deltaX}px, ${deltaY}px) scale(${scale})`,
-                ],
-            }, {
-                duration: 800, // TODO: base on distance
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            // Now reveal the hidden goal tile and delete the old one
-            destDiv.classList.remove('bon_hidden');
-            goalDiv.parentElement.removeChild(goalDiv);
-        },
-
-        async animateGoalFromPlayerBoardAsync(playerId, goalId) {
-            const destDiv = document.getElementById(`bon_goal-placeholder-${goalId}`);
-
-            // Animate the goal tile from the player board back to the playing surface
-            const goalDiv = document.getElementById(`bon_summary-goal-${playerId}-${goalId}`);
-            const goalRect = goalDiv.getBoundingClientRect();
-            const destRect = destDiv.getBoundingClientRect();
-            const goalMidX = Math.round(goalRect.left + goalRect.width / 2);
-            const goalMidY = Math.round(goalRect.top + goalRect.height / 2);
-            const destMidX = Math.round(destRect.left + destRect.width / 2);
-            const destMidY = Math.round(destRect.top + destRect.height / 2);
-            const deltaX = destMidX - goalMidX;
-            const deltaY = destMidY - goalMidY;
-            const scale = destRect.height / goalRect.height;
-
-            goalDiv.style.zIndex = 100;
-            await goalDiv.animate({
-                transform: [
-                    `translate(${deltaX}px, ${deltaY}px) scale(${scale})`,
-                ],
-            }, {
-                duration: 400, // TODO: base on distance (but twice as fast as the 'do' action)
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-
-            // Now swap out the animated goal with a new one
-            this.createGoalTile(goalId, `bon_goal-placeholder-${goalId}`);
-            goalDiv.parentElement.removeChild(goalDiv);
-        },
-
-        async animateGoalRenouncementAsync(playerId, goalId) {
-            // Create a hidden goal tile on the player summary board
-            const tileDiv = this.createSummaryGoalTilePlaceholder(playerId, goalId, true, false);
-
-            await tileDiv.animate({
-                opacity: [ 0, 1, 1, 1 ],
-                transform: [
-                    `scale(0)`,
-                    `scale(1)`,
-                    `scale(1.15)`,
-                    `scale(1)`,
-                ],
-            }, {
-                duration: 400,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-        },
-
-        async animateGoalUnRenouncementAsync(playerId, goalId) {
-            const tileDiv = document.getElementById(`bon_summary-goal-${playerId}-${goalId}`);
-            await tileDiv.animate({
-                opacity: [ 1, 0 ],
-                transform: [
-                    `scale(1)`,
-                    `scale(0)`,
-                ],
-            }, {
-                duration: 200,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
-            tileDiv.parentElement.removeChild(tileDiv);
-        },
-
         async animateFinalScoresAsync(scores) {
             // Add the empty table and the top-left empty header cell
             createFromTemplate('bonsai_Templates.finalScores', '', 'bon_surface');
@@ -1863,7 +1028,7 @@ function (
                 this.scoreCounter[playerId].setValue(0);
             }
             // Delay to allow score counters to set to 0
-            await this.delayAsync(100);
+            await delayAsync(100);
 
             // Add the player names along the top
             for (const playerId of Object.keys(scores)) {
@@ -1882,7 +1047,7 @@ function (
                 }, 'bon_final-scores-table');
             }
 
-            await this.delayAsync(200);
+            await delayAsync(200);
 
             //
             // Add a row for each scoring category
@@ -1933,7 +1098,7 @@ function (
                     }).finished;
                 });
                 await Promise.all(rowPromises);
-                await this.delayAsync(200);
+                await delayAsync(200);
             }
 
             // Set the player summary scores
@@ -1947,11 +1112,7 @@ function (
             const scoreDiv = document.getElementById(divId);
             scoreDiv.classList.add('bon_winner');
 
-            await this.delayAsync(2000);
-        },
-
-        reflow(element = document.documentElement) {
-            void(element.offsetHeight);
+            await delayAsync(2000);
         },
 
 
@@ -1961,21 +1122,21 @@ function (
         async onClickCultivate() {
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('cultivate')) return;
+            console.log('onClickCultivate()');
 
-            // TODO: clean this up... how much can be hidden?
-            this.clientStateArgs.workflow = this.cultivateWorkflow();
-            await this.advanceWorkflow();
+            await this.workflowManager.beginAsync(this.cultivateWorkflow());
         },
 
         async onClickInventoryTile(divId, tileType) {
-            this.clientStateArgs.tileDivId = divId;
-            this.clientStateArgs.tileType = tileType;
-            
-            // TODO: clean this up... how much can be hidden?
-            if (!this.clientStateArgs.workflow) {
-                this.clientStateArgs.workflow = this.cultivateWorkflow({ skipSelectPrompt: true });
-            }            
-            await this.advanceWorkflow();
+            const args = {
+                tileDivId: divId,
+                tileType: tileType,
+            };
+
+            // Allow the player to click a tile to immediately jump
+            // into the cultivate workflow without first clicking
+            // the 'Place a Tile' button.
+            await this.workflowManager.advanceOrBeginAsync(this.cultivateWorkflow({ skipSelectPrompt: true }), args);
         },
 
         async onClickVacancy(e) {
@@ -1986,32 +1147,11 @@ function (
 
             const { x, y } = e.currentTarget.dataset;
             console.log(`onClickVacancy(${x}, ${y})`);
-            const key = makeKey(x, y);
 
-            // Place the tile if the player has already selected the type
-            const { tileType, legalMoves } = this.clientStateArgs;
-            const firstLegalDir = legalMoves[tileType][key][0];
-
-            // Select the tile rotation depending on the tile type and the first legal direction
-            let rotation = 0;
-            switch (tileType) {
-                case TileType.Wood: break;
-                case TileType.Leaf: // default leaf-wood connector is in bottom-left position (3)
-                    rotation = (firstLegalDir + 3) % 6;
-                    break;
-                case TileType.Flower: // default flower-leaf connector is in bottom-left position (3)
-                    rotation = (firstLegalDir + 3) % 6;
-                    break;
-                case TileType.Fruit: // default fruit-leaf/leaf connector is in bottom-right and bottom-left positions (2,3)
-                    rotation = (firstLegalDir + 4) % 6;
-                    break;
-            }
-
-            this.clientStateArgs.locX = parseInt(x, 10);
-            this.clientStateArgs.locY = parseInt(y, 10);
-            this.clientStateArgs.locR = rotation;
-
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync({
+                locX: parseInt(x, 10),
+                locY: parseInt(y, 10),
+            });
         },
 
         async onClickGoal(goalId) {
@@ -2024,22 +1164,20 @@ function (
             console.log(`onClickGoal(${goalId})`);
 
             this.clientStateArgs.claimed = true;
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync();
         },
 
         async onClickCancelCultivate() {
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickCancelCultivate()');
-            await this.actionStack.undoAllAsync();
-            this.resetClientStateArgs();
-            this.restoreServerGameState();
+            await this.workflowManager.abortAsync();
+            this.resetClientStateArgs(); // KILL? maybe not needed now?
         },
 
         async onClickUndo() {
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickUndo()');
-            this.clientStateArgs.undo = true;
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync({ undo: true });
         },
 
         //
@@ -2049,22 +1187,13 @@ function (
         async onClickStopPlacingTiles() {
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickStopPlacingTiles()');
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync();
         },
 
-        async onClickCancelInventoryTile() {
+        async onClickCancel() {
             if (!this.isCurrentPlayerActive()) return;
-            console.log('onClickCancelInventoryTile()');
-            this.clientStateArgs.canceled = true;
-            await this.advanceWorkflow();
-        },
-
-        // TODO: consolidate all the OnClick...Cancel
-        async onClickCancelLocation() {
-            if (!this.isCurrentPlayerActive()) return;
-            console.log('onClickCancelLocation()');
-            this.clientStateArgs.canceled = true;
-            await this.advanceWorkflow();
+            console.log('onClickCancel()');
+            await this.workflowManager.advanceAsync({ canceled: true });
         },
 
         async onClickCultivateEndTurn() {
@@ -2089,7 +1218,7 @@ function (
             catch (err) {
                 return;
             }
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync();
             this.actionStack.clear();
         },
 
@@ -2143,7 +1272,7 @@ function (
                 case 0: break; // Player gets no bonus
                 case 1:
                     yield new SetClientState('client_meditateChooseWoodOrLeafTile', _('${you} must choose to draw a wood or leaf tile'));
-                    bonusTiles.push(this.clientStateArgs.woodOrLeaf);
+                    bonusTiles.push(this.clientStateArgs.tileType);
                     break;
                 case 2:
                     bonusTiles.push(TileType.Wood, TileType.Flower);
@@ -2165,7 +1294,7 @@ function (
                 const userChoice = resources[0] === ResourceType.Wild; // Wilds are always single resource
                 if (userChoice) {
                     yield new SetClientState('client_meditateChooseMasterTile', _('${you} must choose a tile to draw'));
-                    receivedTileTypes[0] = this.clientStateArgs.masterTile;
+                    receivedTileTypes[0] = this.clientStateArgs.tileType;
                 }
 
                 yield new ReceiveTilesAction(this.myPlayerId, receivedTileTypes, slot, 'masterCardTiles', userChoice);
@@ -2218,8 +1347,6 @@ function (
                 
                 const { tileDivId, tileType } = this.clientStateArgs;
                 yield new DiscardExcessTileAction(this.myPlayerId, tileType, tileDivId);
-                delete this.clientStateArgs.tileDivId;
-                delete this.clientStateArgs.tileType;
                 discarded++;
             }
             this.makeTilesUnselectable();
@@ -2236,7 +1363,7 @@ function (
 
             // Show a brief message and skip if the player has no tiles to play
             if (bonsai.getTileCount() === 0) {
-                setTimeout(() => this.advanceWorkflow(), 1500);
+                setTimeout(() => this.workflowManager.advanceAsync(), 1500);
                 const msg =
                     this.clientStateArgs.alreadyPlaced
                         ? _('${you} have no more tiles to play')
@@ -2250,7 +1377,7 @@ function (
                 if (!this.makeTilesSelectable({ resourceFilter, onlyLegal: true })) {
                     // Show a slightly different message if the player
                     // has tiles but can't legally play any of them.
-                    setTimeout(() => this.advanceWorkflow(), 1500);
+                    setTimeout(() => this.workflowManager.advanceAsync(), 1500);
                     const msg =
                         this.clientStateArgs.alreadyPlaced
                             ? _('${you} are unable to play any more tiles')
@@ -2289,18 +1416,18 @@ function (
                 this.makeTilesUnselectable();
 
                 // Prompt the player to place the tile
-                this.showLegalMoves(tileType);
+                const legalMoves = bonsai.getLegalMoves({ resourceFilter });
+                this.showLegalMoves(legalMoves, tileType);
                 yield new SetClientState('client_chooseLocation', _('${you} must select a location'));
 
                 tileDiv.classList.remove('bon_selected');
                 this.destroyAllVacancies();
-                delete this.clientStateArgs.tileType;
-                delete this.clientStateArgs.tileDivId;
 
                 // Collect the player's decision; loop back to the start if they canceled
                 if (this.clientStateArgs.canceled) continue;
-                const { locX, locY, locR } = this.clientStateArgs;
+                const { locX, locY } = this.clientStateArgs;
                 if (locX === undefined) continue;
+                const locR = this.getRotationFromLegalMoves(legalMoves, tileType, locX, locY);
 
                 // Animate the placement and return the tile to the parent workflow
                 yield new PlaceTileAction(this.myPlayerId, tileDivId, tileType, locX, locY, locR);
@@ -2314,6 +1441,30 @@ function (
 
                 return tileType;
             }
+        },
+
+        getRotationFromLegalMoves(legalMoves, tileType, x, y) {
+            const key = makeKey(x, y);
+
+            // Place the tile if the player has already selected the type
+            const firstLegalDir = legalMoves[tileType][key][0];
+
+            // Select the tile rotation depending on the tile type and the first legal direction
+            switch (tileType) {
+                case TileType.Wood:
+                    return 0;
+
+                case TileType.Leaf: // default leaf-wood connector is in bottom-left position (3)
+                    return (firstLegalDir + 3) % 6;
+
+                case TileType.Flower: // default flower-leaf connector is in bottom-left position (3)
+                    return (firstLegalDir + 3) % 6;
+
+                case TileType.Fruit: // default fruit-leaf/leaf connector is in bottom-right and bottom-left positions (2,3)
+                    return (firstLegalDir + 4) % 6;
+            }
+
+            throw new Error('Unknown tileType:', tileType);
         },
 
         //
@@ -2347,50 +1498,12 @@ function (
             }
         },
 
-        // TODO: move this
-        async advanceWorkflow() {
-            //
-            // Iterate through workflow logic until input is required from the player.
-            //
-            while (this.clientStateArgs.workflow) {
-                const { value, done } = this.clientStateArgs.workflow.next();
-                if (done) {
-                    delete this.clientStateArgs.workflow;
-                    if (value === false) {
-                        await this.actionStack.undoAllAsync();
-                        this.restoreServerGameState();
-                    }
-                    break;
-                }
-                if (value instanceof Action) {
-                    await this.actionStack.doAsync(value);
-                }
-                else if (value instanceof SetClientState) {
-                    const { name, description, args } = value;
-                    this.setClientState(name, {
-                        descriptionmyturn: description,
-                        args,
-                    });
-                    break;
-                }
-                else if (value instanceof UndoLastAction) {
-                    delete this.clientStateArgs.undo;
-                    await this.actionStack.undoAsync();
-                }
-            }
-            delete this.clientStateArgs.canceled;
-            delete this.clientStateArgs.undo;
-        },
-
         async onClickMeditate() {
-            if (this.clientStateArgs.alreadyPlaced) return;
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('meditate')) return;
             console.log(`onClickMeditate()`);
 
-            // TODO: clean this up... how much can be hidden?
-            this.clientStateArgs.workflow = this.meditateWorkflow();
-            await this.advanceWorkflow();
+            await this.workflowManager.beginAsync(this.meditateWorkflow());
         },
 
         async onClickSlot(slot) {
@@ -2401,50 +1514,29 @@ function (
             const cardId = bonsai.board[slot];
             if (!cardId) return; // E.g. the slot is empty... either mid-animation or no cards left
 
-            const div = document.getElementById(`bon_card-${cardId}`);
-            // TODO? right now we don't use the bon_selectable class here.
-            //if (!div?.classList.contains('bon_selectable')) return;
-
             console.log(`onClickSlot(${slot})`);
 
-            this.makeTilesUnselectable();
+            this.makeTilesUnselectable(); // TODO: perhaps should be in the workflow / action
 
-            this.clientStateArgs.slot = slot;
-            this.clientStateArgs.cardId = cardId;
-
-            // TODO: clean this up... how much can be hidden?
-            if (!this.clientStateArgs.workflow) {
-                this.clientStateArgs.workflow = this.meditateWorkflow({ skipSelectPrompt: true });
-            }            
-            await this.advanceWorkflow();
+            const args = {
+                slot,
+                cardId,
+            };
+            await this.workflowManager.advanceOrBeginAsync(this.meditateWorkflow({ skipSelectPrompt: true }), args);
         },
 
-        async onClickChooseTile(tileType) {
+        async onClickChooseTileType(tileType) {
             if (!this.isCurrentPlayerActive()) return;
-            if (!this.checkAction('meditate')) return;
-            console.log(`onClickChooseTile(${tileType})`);
+            console.log(`onClickChooseTileType(${tileType})`);
 
-            switch (this.currentState) {
-                case 'client_meditateChooseWoodOrLeafTile':
-                    this.clientStateArgs.woodOrLeaf = tileType;
-                    break;
-
-                case 'client_meditateChooseMasterTile':
-                    this.clientStateArgs.masterTile = tileType;
-                    break;
-                
-                default:
-                    throw new Error('not implemented');
-            }
-
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync({ tileType });
         },
 
         async onClickMeditateEndTurn() {
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickMeditateEndTurn()`);
 
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync();
 
             const data = this.actionStack.apply();
             let {
@@ -2470,53 +1562,32 @@ function (
             catch (err) {
                 return;
             }
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync();
             this.actionStack.clear();
         },
 
         async onClickCancelMeditate() {
             if (!this.isCurrentPlayerActive()) return;
-            delete this.clientStateArgs.workflow;
-            await this.actionStack.undoAllAsync();
-            this.restoreServerGameState();
+            console.log('onClickCancelMeditate()');
+            await this.workflowManager.abortAsync();
+            this.resetClientStateArgs(); // KILL? maybe not needed now?
         },
 
         async onClickClaimGoal(claimed) {
             if (!this.isCurrentPlayerActive()) return;
-            this.clientStateArgs.claimed = claimed;
-            await this.advanceWorkflow();
+            await this.workflowManager.advanceAsync({ claimed });
         },
 
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
 
-        // TODO: move to core
-        setupNotifications() {
-            console.log('notifications subscriptions setup');
-            const eventNames = Object.getOwnPropertyNames(this.__proto__).reduce((all, name) => {
-                const match = /^notify_(.+?)$/.exec(name);
-                match && all.push(match[1]);
-                return all;
-            }, []);
-            for (const eventName of eventNames) {
-                dojo.subscribe(eventName, this, async data => {
-                    const fnName = `notify_${eventName}`;
-                    console.log(`Entering ${fnName}`, data.args);
-                    await this[fnName].call(this, data.args);
-                    console.log(`Exiting ${fnName}`);
-                    this.notifqueue.setSynchronousDuration(0);
-                });
-                this.notifqueue.setSynchronous(eventName);
-            }
-            console.log(`Registered ${eventNames.length} event handlers`);
-        },
-
-        notify_tileRemoved({ playerId, x, y, score }) {
-            if (playerId != this.player_id) {
+        async notify_tileRemoved({ playerId, x, y, score }) {
+            if (playerId != this.myPlayerId || g_archive_mode) {
                 bonsai.removeTile(playerId, x, y);
 
                 // TODO: remove the tile from the UI
+                // TODO: await RemoveTileAction(playerId, x, y).doAsync();
             }
             
             // Update player score
@@ -2528,14 +1599,13 @@ function (
                 bonsai.countdownFinalTurns();
             }
 
-            if (playerId != this.player_id) {
+            if (playerId != this.myPlayerId || g_archive_mode) {
                 for (const { type, x, y, r } of tiles) {
                     // Find the first inventory tile of the specified type
                     const tileDiv = document.querySelector(`#bon_tiles-${playerId} .bon_tile-${type}`);
                     if (!tileDiv) continue;
-                    await this.actionStack.doAsync(new PlaceTileAction(playerId, tileDiv.id, type, x, y, r));
+                    await new PlaceTileAction(playerId, tileDiv.id, type, x, y, r).doAsync();
                 }
-                this.actionStack.clear();
             }
 
             // Update player score
@@ -2543,27 +1613,20 @@ function (
         },
 
         async notify_tilesReceived({ playerId, tileType: tileTypes, slot }) {
-            if (playerId == this.myPlayerId) return;
+            if (playerId == this.myPlayerId && !g_archive_mode) return;
 
-            await this.actionStack.doAsync(new ReceiveTilesAction(playerId, tileTypes, slot, ''));
-            this.actionStack.clear();
+            await new ReceiveTilesAction(playerId, tileTypes, slot, '').doAsync();
         },
 
         async notify_goalRenounced({ playerId, goalId }) {
-            if (playerId == this.player_id) return;
+            if (playerId == this.myPlayerId && !g_archive_mode) return;
 
-            bonsai.renounceGoal(playerId, goalId);
-            this.updateGoalTooltips();
-
-            // TODO: maybe show on the player summary board?
+            await new RenounceGoalAction(playerId, goalId).doAsync();
         },
 
         async notify_goalClaimed({ playerId, goal: goalId, score }) {
-            if (playerId != this.player_id) {
-                await this.animateGoalToPlayerBoardAsync(playerId, goalId);
-
-                bonsai.claimGoal(playerId, goalId);
-                this.updateGoalTooltips();
+            if (playerId != this.myPlayerId || g_archive_mode) {
+                await new ClaimGoalAction(playerId, goalId).doAsync();
             }
 
             // Update player score
@@ -2577,22 +1640,24 @@ function (
 
             // Only act out the actions for other players because
             // this player's UI has already been updated locally.
-            if (playerId != this.player_id) {
+            if (playerId != this.myPlayerId || g_archive_mode) {
                 const slot = bonsai.board.indexOf(cardId);
-                await this.actionStack.doAsync(new TakeCardAction(playerId, cardId, slot));
-                this.actionStack.clear();
+                await new TakeCardAction(playerId, cardId, slot).doAsync();
             }
 
             // Remove any cards that were on the facedown pile
+            // after the action completed -- because we don't
+            // want this information to continue to be available
+            // once it has been hidden
             const faceDownDiv = document.getElementById(`bon_seishi-facedown-${playerId}`);
             faceDownDiv.innerHTML = '';
             faceDownDiv.classList.remove('bon_empty');
         },
 
         async notify_capacityIncreased({ playerId, delta }) {
-            if (playerId != this.myPlayerId) {
-                this.adjustPlayerCapacity(playerId, delta);
-            }
+            if (playerId == this.myPlayerId && !g_archive_mode) return;
+
+            this.adjustPlayerCapacity(playerId, delta);
         },
 
         async notify_cardRevealed({ cardId }) {
@@ -2600,12 +1665,11 @@ function (
         },
 
         async notify_lastRound() {
-            // TODO: should be in the logic when the cards are drawn...
             bonsai.data.finalTurns = bonsai.data.order.length;
         },
 
         async notify_tilesDiscarded({ playerId, tileType: tileTypes }) {
-            if (playerId == this.player_id) return;
+            if (playerId == this.myPlayerId && !g_archive_mode) return;
 
             const adjustments =
                 Object.values(tileTypes)

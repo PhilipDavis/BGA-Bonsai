@@ -69,6 +69,32 @@ define([], function () {
                 throw err;
             }
         };
+
+        //
+        // Add convenience properties
+        //
+        Object.defineProperties(gameui, {
+            currentState: {
+                get() {
+                    return this.gamedatas.gamestate.name;
+                },
+            },
+            myPlayerId: {
+                get() {
+                    return this.player_id;
+                },
+            },
+        });
+
+        //
+        // Register for preference changes
+        //
+        initPreferencesObserver();
+
+        //
+        // Register the AJAX notification handlers
+        //
+        setupNotifications();
     }
 
     //
@@ -166,6 +192,15 @@ define([], function () {
         return stringFromTemplate(templateHtml, replacements, strict);
     }
 
+    function __(text) {
+        return bga_format(_(text), {
+            '/': t => `<i>${t}</i>`,
+            '*': t => `<b>${t}</b>`,
+            '_': t => `<u>${t}</u>`,
+            '|': t => `<br/>`,
+        });
+    }
+
     //
     // A helper function to replace "dojo.place(this.format_block(...), ...);"
     //
@@ -189,12 +224,60 @@ define([], function () {
         }
     }
 
+    function onPreferenceChange(pref) {
+        // Apply the CSS of the chosen preference value
+        // (Unless it's a default pref, which appears to be
+        // delivered as an array and without CSS class names)
+        if (typeof pref.values === 'object' && typeof pref.values.length === 'number') return;
+        const html = document.getElementsByTagName('html')[0];
+        for (const [ value, settings ] of Object.entries(pref.values)) {
+            if (typeof settings.cssPref !== 'string') continue;
+            if (value == pref.value) {
+                html.classList.add(settings.cssPref);
+            }
+            else {
+                html.classList.remove(settings.cssPref);
+            }
+        }
+    }
+
+    function initPreferencesObserver() {
+        dojo.query('.preference_control').on('change', e => {
+            const match = e.target?.id.match(/^preference_[cf]ontrol_(\d+)$/);
+            if (!match) return;
+            const prefId = match[1];
+            const { value } = e.target;
+            gameui.prefs[prefId].value = parseInt(value, 10);
+            onPreferenceChange(gameui.prefs[prefId]);
+        });
+    }
+    
+    function setupNotifications() {
+        console.log('notifications subscriptions setup');
+        const eventNames = Object.getOwnPropertyNames(gameui.__proto__).reduce((all, name) => {
+            const match = /^notify_(.+?)$/.exec(name);
+            match && all.push(match[1]);
+            return all;
+        }, []);
+        for (const eventName of eventNames) {
+            dojo.subscribe(eventName, gameui, async data => {
+                const fnName = `notify_${eventName}`;
+                console.log(`Entering ${fnName}`, data.args);
+                await gameui[fnName].call(gameui, data.args);
+                console.log(`Exiting ${fnName}`);
+                gameui.notifqueue.setSynchronousDuration(0);
+            });
+            gameui.notifqueue.setSynchronous(eventName);
+        }
+        console.log(`Registered ${eventNames.length} event handlers`);
+    }
+
     // TODO: update to new bgaPerformAction function
     async function invokeServerActionAsync(actionName, args) {
         return new Promise((resolve, reject) => {
             try {
                 if (!gameui.checkAction(actionName)) {
-                    console.error(`Action '${actionName}' not allowed in ${this.currentState}`, args);
+                    console.error(`Action '${actionName}' not allowed in ${gameui.currentState}`, args);
                     return reject('Invalid');
                 }
                 if (!gameui.isCurrentPlayerActive()) {
@@ -211,11 +294,20 @@ define([], function () {
         });
     }
 
-    return {
+    const core = {
         install,
         formatBlock,
+        __,
         createFromTemplate,
         stringFromTemplate,
         invokeServerActionAsync,
     };
+
+    // Add these methods to window for easier debugging of games on Production
+    if (typeof window !== 'undefined') {
+        window.pdw3 = window.pdw3 || {};
+        window.pdw3.core = core;
+    }
+
+    return core;
 });

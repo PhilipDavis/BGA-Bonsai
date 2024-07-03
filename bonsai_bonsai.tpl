@@ -148,7 +148,7 @@ const bonsai_Templates = {
 
     vacancy:
         '<div ' +
-            'id="${ID}" ' +
+            'id="${DIV_ID}" ' +
             'class="bon_vacancy" ' +
             'style="transform: translate(calc(${X_EM}em - 50%), calc(${Y_EM}em - 50%))" ' +
             'data-x="${X}" ' +

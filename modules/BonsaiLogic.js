@@ -129,7 +129,7 @@ define([
     };
 
     const Goals = {
-        '1': {
+        1: {
             type: GoalType.TotalWood,
             size: GoalSize.Small,
             req: 8,
