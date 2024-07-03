@@ -388,7 +388,7 @@ function (
 
         async undoAsync() {
             if (this.playerId == gameui.myPlayerId) {
-                if (cardType === CardType.Tool) {
+                if (this.cardType === CardType.Tool) {
                     gameui.adjustPlayerCapacity(this.playerId, -2);
                 }
             }
@@ -1010,6 +1010,15 @@ function (
             }
             for (const goalId of player.claimed) {
                 this.createSummaryGoalTilePlaceholder(playerId, goalId, true, true);
+                if (playerId == this.myPlayerId) {
+                    // Grey out goals of the same type so that the player knows the goal is unavailable1
+                    for (const availableGoalId of bonsai.data.goalTiles) {
+                        if (Goals[goalId].type === Goals[availableGoalId].type) {
+                            const goalDiv = document.getElementById(`bon_goal-${availableGoalId}`);
+                            goalDiv?.classList.add('bon_ineligible');
+                        }
+                    }
+                }
             }
         },
 
@@ -1022,7 +1031,7 @@ function (
             // Remove the face down pile
             const pileDivId = `bon_seishi-facedown-${playerId}`;
             const pileDiv = document.getElementById(pileDivId);
-            pileDiv.parentElement.removeChild(pileDiv);
+            pileDiv?.parentElement.removeChild(pileDiv);
 
             // TODO: animate the cards from the facedown pile into a face up row
 
@@ -2624,7 +2633,7 @@ function (
 
         async notify_finalScore({ scores, reveal }) {
             await Promise.all(
-                ...Object.entries(reveal).map(async ([ playerId, cardIds ]) => {
+                Object.entries(reveal).map(async ([ playerId, cardIds ]) => {
                     await this.revealFaceDownCardsAsync(playerId, cardIds);
                 }),
             );
