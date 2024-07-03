@@ -133,10 +133,13 @@ class Bonsai extends Table
     {
         $currentPlayerId = $this->getCurrentPlayerId();
         $bonsai = $this->loadGameState();        
-        return [
+        $result = [
             'data' => $bonsai->getPlayerData($currentPlayerId),
             'scores' => $bonsai->getScores(),
         ];
+        if ($this->getBgaEnvironment() == 'studio')
+            $result['state'] = $bonsai->toJson();
+        return $result;
     }
 
     //
