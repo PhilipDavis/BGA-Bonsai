@@ -511,7 +511,40 @@ class Bonsai extends Table
         $this->saveGameState($bonsai);
     }
 
+    public function loadBugReportSQL(int $reportId, array $studioPlayers): void
+    {
+        $this->trace('** DEBUG - Loading bug report ' . $reportId);
+        
+        $prodPlayers = $this->getObjectListFromDb("SELECT `player_id` FROM `player`", true);
+        $prodCount = count($prodPlayers);
+        $studioCount = count($studioPlayers);
+        if ($prodCount != $studioCount) {
+            throw new BgaVisibleSystemException("Incorrect player count (bug report has $prodCount players, studio table has $studioCount players)");
+        }
 
+        $bonsai = $this->loadGameState();
+
+        // SQL specific to your game
+        // For example, reset the current state if it's already game over
+        $sql = [
+            "UPDATE `global` SET `global_value` = 10 WHERE `global_id` = 1 AND `global_value` = 99"
+        ];
+        foreach ($prodPlayers as $index => $prodPlayerId) {
+            $studioPlayerId = $studioPlayers[$index];
+            // SQL common to all games
+            $sql[] = "UPDATE `player` SET `player_id` = $studioPlayerId WHERE `player_id` = $prodPlayerId";
+            $sql[] = "UPDATE `global` SET `global_value` = $studioPlayerId WHERE `global_value` = $prodPlayerId";
+            $sql[] = "UPDATE `stats` SET `stats_player_id` = $studioPlayerId WHERE `stats_player_id` = $prodPlayerId";
+            $bonsai->debugSwapPlayers($prodPlayerId, $studioPlayerId);
+        }
+        foreach ($sql as $q) {
+            $this->DbQuery($q);
+        }
+
+        $this->saveGameState($bonsai);
+    }
+
+    
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie
 ////////////
@@ -547,6 +580,7 @@ class Bonsai extends Table
         }
     }
     
+
 ///////////////////////////////////////////////////////////////////////////////////:
 ////////// DB upgrade
 //////////

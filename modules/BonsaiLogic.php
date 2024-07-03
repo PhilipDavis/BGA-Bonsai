@@ -918,6 +918,21 @@ class BonsaiLogic extends EventEmitter
         return $counts;
     }
 
+    //
+    // Helper method for debugging errors in Production.
+    // The bug state can be loaded into an active game
+    // and the game will take on the game state from
+    // the table in the bug report. But to make the game
+    // playable in Studio, we need to change the player
+    // IDs to match our Studio player IDs.
+    //
+    function debugSwapPlayers($oldPlayerId, $newPlayerId)
+    {
+        $this->data->order = array_values(array_map(fn($id) => $id == $oldPlayerId ? $newPlayerId : $id, $this->data->order));
+        $this->data->players->$newPlayerId = $this->data->players->$oldPlayerId;
+        unset($this->data->players->$oldPlayerId);
+    } 
+
     function toJson()
     {
         return json_encode($this->data);
