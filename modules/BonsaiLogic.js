@@ -208,7 +208,7 @@ define([
             points: 16,
         },
 
-        13: { // TODO: goal logic for these three
+        13: {
             type: GoalType.Placement,
             size: GoalSize.Small,
             req: 1,

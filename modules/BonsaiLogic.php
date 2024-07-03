@@ -451,12 +451,10 @@ class BonsaiLogic extends EventEmitter
 
             case CARDTYPE_HELPER:
                 $this->data->players->$playerId->faceDown[] = $drawCardId;
-                // TODO
                 break;
 
             case CARDTYPE_PARCHMENT:
                 $this->data->players->$playerId->faceDown[] = $drawCardId;
-                // TODO
                 break;
         }
 
@@ -833,7 +831,7 @@ class BonsaiLogic extends EventEmitter
                             $quad3 = count(array_filter($quadrants, fn($q) => $q === 3)) > 0;
                             $quad4 = count(array_filter($quadrants, fn($q) => $q === 4)) > 0;
                             if (count($quadrants)) $count = 1;
-                            if (($quad1 && $quad3) || ($quad3 && $quad4)) $count = 2;
+                            if (($quad1 && $quad3) || ($quad2 && $quad4)) $count = 2;
                             break;
                     }
                     break;

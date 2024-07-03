@@ -384,6 +384,7 @@ body {
 
 #bon_opponents .bon_player {
     background-color: rgba(255, 255, 255, .25);
+    border-radius: 1rem;
 }
 #bon_opponents .bon_tree-host {
     margin-top: 0em;
@@ -1202,6 +1203,11 @@ body {
         grid-area: player;
     }
 
+    .bon_player-name {
+        font-size: 1.25rem;
+        margin-top: 0;
+    }
+    
     #bon_opponents {
         grid-area: others;
         font-size: .5em;

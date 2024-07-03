@@ -32,4 +32,4 @@ RUN apk update && \
 
 WORKDIR /var/bga
 
-CMD ["phpunit.phar", "modules/BonsaiLogicTest.php"]
+CMD ["phpunit.phar", "--no-progress", "--testdox", "modules/BonsaiLogicTest.php"]

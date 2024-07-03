@@ -377,12 +377,22 @@ function (
                 }
             })();
 
-            // TODO: Add stat area for Master, Helper, and Parchment cards
-
             await cardPromise; // TODO: collapse
+
+            if (this.playerId == gameui.myPlayerId) {
+                if (cardType === CardType.Tool) {
+                    gameui.adjustPlayerCapacity(this.playerId, 2);
+                }
+            }
         }
 
         async undoAsync() {
+            if (this.playerId == gameui.myPlayerId) {
+                if (cardType === CardType.Tool) {
+                    gameui.adjustPlayerCapacity(this.playerId, -2);
+                }
+            }
+
             //
             // Move the card back to the board
             //
@@ -1176,9 +1186,6 @@ function (
                     }), 
                 });
 
-                // TODO: update the tooltip as a player places tiles
-                // TODO: show how close they are to being eligible; or if they've renounced it, etc.
-
                 // Note: the divId is also used as the class name
                 // but we need to use the class name for tool tips
                 // because the divId will be different for goals
@@ -1459,7 +1466,6 @@ function (
                     break;
 
                 case 'client_claimOrRenounceGoal':
-                    // TODO: images on the buttons
                     this.addActionButton('bon_button-claim-goal', _('Claim'), () => this.onClickClaimGoal(true));
                     this.addActionButton('bon_button-renounce-goal', _('Renounce'), () => this.onClickClaimGoal(false)); 
                     this.addActionButton(`bon_button-undo-goal`, _('Undo'), () => this.onClickUndo()); 
@@ -2575,7 +2581,9 @@ function (
         },
 
         async notify_capacityIncreased({ playerId, delta }) {
-            this.adjustPlayerCapacity(playerId, delta);
+            if (playerId != this.myPlayerId) {
+                this.adjustPlayerCapacity(playerId, delta);
+            }
         },
 
         async notify_cardRevealed({ cardId }) {
@@ -2617,7 +2625,7 @@ function (
         async notify_finalScore({ scores, reveal }) {
             await Promise.all(
                 ...Object.entries(reveal).map(async ([ playerId, cardIds ]) => {
-                    await this.revealFaceDownCards(playerId, cardIds);
+                    await this.revealFaceDownCardsAsync(playerId, cardIds);
                 }),
             );
             await this.animateFinalScoresAsync(scores);
