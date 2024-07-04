@@ -815,7 +815,9 @@ class BonsaiLogic extends EventEmitter
                 case GOALTYPE_PLACEMENT:
                     switch ($goalTile['size']) {
                         case GOALSIZE_SMALL:
-                            $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move)));
+                            // Needs to protrude out the side opposite the gold crack in the pot
+                            $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move) === 1));
+                            // TODO: if player can flip the pot, need to take that into account
                             break;
 
                         case GOALSIZE_MEDIUM:

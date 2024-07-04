@@ -530,7 +530,9 @@ define([
                 case GoalType.Placement:
                     switch (size) {
                         case GoalSize.Small:
-                            count = played.some(move => this.getProtrudingDirection(move)) ? 1 : 0;
+                            // Needs to protrude out the side opposite the gold crack in the pot
+                            count = played.some(move => this.getProtrudingDirection(move) === 1) ? 1 : 0;
+                            // TODO: if player can flip the pot, need to take that into account
                             break;
 
                         case GoalSize.Medium:
