@@ -377,6 +377,7 @@ class BonsaiLogic extends EventEmitter
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
         $this->discardTiles($discardTiles);
+        $this->revealCard();
 
         $score = $this->getPlayerScore($this->getNextPlayerId())['total'];
         $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
@@ -389,7 +390,7 @@ class BonsaiLogic extends EventEmitter
         $playerId = $this->getNextPlayerId();
 
         // Does the card exist in the available board slots?
-        $index = array_search($drawCardId, $this->data->board); 
+        $index = array_search($drawCardId, $this->data->board);
         if ($index === false)
             throw new Exception('Card unavailable');
 
@@ -492,10 +493,17 @@ class BonsaiLogic extends EventEmitter
         if (count($tileTypes))
             $this->emit('tilesReceived', [ $playerId, $tileTypes, $index ]);
 
+        $this->data->board[$index] = null;
+    }
 
+    public function revealCard()
+    {
         //
         // Shift the other cards to the right and draw the next card
         //
+        $index = array_search(null, $this->data->board);
+        if ($index === false || $index > 3)
+            throw new Exception('Invalid board state');
         array_splice($this->data->board, $index, 1);
         if (count($this->data->drawPile))
         {
