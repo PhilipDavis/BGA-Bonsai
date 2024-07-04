@@ -5,9 +5,9 @@ define([
     "bgagame/modules/PhilsUtils/PhilsUtils.ui.v1",
     "bgagame/modules/BonsaiLogic",
 ], (
-    { install, formatBlock, __, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
+    { createFromTemplate },
     { delayAsync, transitionInAsync, transitionOutAsync, getSiblingIndex, Action },
-    { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalType, GoalSize, GoalStatus, TileType, TileTypeName, Direction },
+    { Cards, CardType, Goals, TileType },
 ) => {
 
 class PlaceTileAction extends Action {
@@ -65,30 +65,32 @@ class PlaceTileAction extends Action {
         destDiv.classList.remove('bon_hidden');
         placeholderDiv.innerHTML = '';
 
-        const slidePromise = destDiv.animate({
-            transform: [
-                `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`,
-                `translate(calc(${xEm}em - 50%), calc(${yEm}em - 50%)) scale(.975) rotate(${deg}deg)`,
-            ],
-        }, {
-            duration: 500,
-            easing: 'ease-out',
-            fill: 'forwards',
-        }).finished;
+        if (!gameui.instantaneousMode) {
+            const slidePromise = destDiv.animate({
+                transform: [
+                    `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`,
+                    `translate(calc(${xEm}em - 50%), calc(${yEm}em - 50%)) scale(.975) rotate(${deg}deg)`,
+                ],
+            }, {
+                duration: 500,
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
 
-        const closeGapPromise = placeholderDiv.animate({
-            width: [ 0 ],
-        } , {
-            delay: 100,
-            duration: 200,
-            easing: 'ease-out',
-            fill: 'forwards',
-        });
+            const closeGapPromise = placeholderDiv.animate({
+                width: [ 0 ],
+            } , {
+                delay: 100,
+                duration: 200,
+                easing: 'ease-out',
+                fill: 'forwards',
+            });
 
-        await Promise.all([
-            slidePromise,
-            closeGapPromise,
-        ]);
+            await Promise.all([
+                slidePromise,
+                closeGapPromise,
+            ]);
+        }
 
         placeholderDiv.parentElement.removeChild(placeholderDiv);
 
@@ -243,7 +245,9 @@ class TakeCardAction extends Action {
         // depending on the type of card
         //
         const cardPromise = (async () => {
-            await gameui.slideToObjectAsync(cardDivId, hostDivId, 800);
+            if (!gameui.instantaneousMode) {
+                await gameui.slideToObjectAsync(cardDivId, hostDivId, 800);
+            }
 
             // Put the card into the card host and update game state
             gameui.placeInElement(cardDivId, hostDivId);
@@ -252,7 +256,9 @@ class TakeCardAction extends Action {
             bonsai.takeCardFromSlot(this.playerId, this.slot);
 
             if (isFaceDown) {
-                await delayAsync(200);
+                if (!gameui.instantaneousMode) {
+                    await delayAsync(200);
+                }
                 await transitionInAsync(cardDivId, 'bon_card-face-down', 400);
             }
         })();
@@ -281,7 +287,9 @@ class TakeCardAction extends Action {
         const cardPromise = (async () => {
             await gameui.slideToObjectAsync(cardDivId, `bon_slot-${this.slot}`, 400);
 
-            await delayAsync(100);
+            if (!gameui.instantaneousMode) {
+                await delayAsync(100);
+            }
             await transitionOutAsync(cardDivId, 'bon_card-face-down', 200);
 
             // Put the card into the card host and update gate state
@@ -329,8 +337,10 @@ class ReceiveTilesAction extends Action {
     async doAsync() {
         await Promise.all(
             this.tileTypes.map(async (tileType, index) => {
-                await delayAsync(100 * index);
-
+                if (!gameui.instantaneousMode) {
+                    await delayAsync(100 * index);
+                }
+                
                 const tileId = `${this.randomValue}-${tileType}-${index}`;
                 const divId = `bon_tile-${tileId}`;
                 createFromTemplate('bonsai_Templates.tile', {
@@ -345,13 +355,18 @@ class ReceiveTilesAction extends Action {
                 
                 // Animate the width of the placeholder growing
                 const hostDiv = gameui.createTilePlaceholderInInventory(this.playerId, tileType);
-                await hostDiv.animate({
-                    width: [ '4.25em' ], // the width of a tile
-                }, {
-                    duration: 100,
-                    easing: 'ease-out',
-                    fill: 'forwards',
-                }).finished;
+                if (!gameui.instantaneousMode) {
+                    await hostDiv.animate({
+                        width: [ '4.25em' ], // the width of a tile
+                    }, {
+                        duration: 100,
+                        easing: 'ease-out',
+                        fill: 'forwards',
+                    }).finished;
+                }
+                else {
+                    hostDiv.style.width = '4.25em';
+                }
 
                 // Slide the tile and make room in inventory at the same time
                 await gameui.slideToObjectAsync(divId, hostDiv);
@@ -465,7 +480,9 @@ class RenounceGoalAction extends Action {
         const tileDiv = gameui.createSummaryGoalTilePlaceholder(this.playerId, this.goalId, true, false);
         gameui.adaptPlayersPanels();
 
-        await tileDiv.animate({
+        if (gameui.instantaneousMode) return;
+
+        await tileDiv?.animate({
             opacity: [ 0, 1, 1, 1 ],
             transform: [
                 `scale(0)`,
@@ -569,16 +586,21 @@ class ClaimGoalAction extends Action {
         const deltaY = destMidY - goalMidY;
         const scale = destRect.height / goalRect.height;
 
-        goalDiv.style.zIndex = 100;
-        await goalDiv.animate({
-            transform: [
-                `translate(${deltaX}px, ${deltaY}px) scale(${scale})`,
-            ],
-        }, {
-            duration: 800, // TODO: base on distance
-            easing: 'ease-out',
-            fill: 'forwards',
-        }).finished;
+        if (gameui.instantaneousMode) {
+            goalDiv.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${scale})`;
+        }
+        else {
+            goalDiv.style.zIndex = 100;
+            await goalDiv.animate({
+                transform: [
+                    `translate(${deltaX}px, ${deltaY}px) scale(${scale})`,
+                ],
+            }, {
+                duration: 800, // TODO: base on distance
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
+        }
 
         // Now reveal the hidden goal tile and delete the old one
         destDiv.classList.remove('bon_hidden');
@@ -647,32 +669,34 @@ class DiscardExcessTileAction extends Action {
         const placeholderDiv = gameui.replaceInventoryTileWithPlaceholder(tileDiv);
         gameui.makeTilesUnselectable();
 
-        await delayAsync(100);
+        if (!gameui.instantaneousMode) {
+            await delayAsync(100);
 
-        // Fade out the tile
-        const fadePromise = tileDiv.animate({
-            opacity: [ 1, 0 ],
-            transform: [ 'scale(1)', 'scale(.5)' ],
-        }, {
-            duration: 200,
-            easing: 'ease-out',
-            fill: 'forwards',
-        }).finished;
+            // Fade out the tile
+            const fadePromise = tileDiv.animate({
+                opacity: [ 1, 0 ],
+                transform: [ 'scale(1)', 'scale(.5)' ],
+            }, {
+                duration: 200,
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
 
-        const closeGapPromise = placeholderDiv.animate({
-            width: [ '4.25em', '0em' ],
-        }, {
-            delay: 100,
-            duration: 200,
-            easing: 'ease-out',
-            fill: 'forwards',
-        }).finished;
+            const closeGapPromise = placeholderDiv.animate({
+                width: [ '4.25em', '0em' ],
+            }, {
+                delay: 100,
+                duration: 200,
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
 
-        await Promise.all([
-            fadePromise,
-            closeGapPromise,
-        ]);
-
+            await Promise.all([
+                fadePromise,
+                closeGapPromise,
+            ]);
+        }
+        
         // Remove the tile
         placeholderDiv.parentElement.removeChild(placeholderDiv);
 

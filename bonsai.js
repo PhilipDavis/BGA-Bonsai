@@ -129,7 +129,7 @@ function (
             // TODO: have variable speeds... 
 
             const playerInventoryTilesDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);
-            playerInventoryTilesDiv.addEventListener('click', e => {
+            playerInventoryTilesDiv?.addEventListener('click', e => {
                 const { target } = e;
                 if (!target.classList.contains('bon_tile')) return;
                 if (!target.classList.contains('bon_selectable')) return;
@@ -429,7 +429,7 @@ function (
                         n: req,
                     }),
                     WARN: this.toolTipText['bon_goal-warning'],
-                    STATUS: stringFromTemplate(this.toolTipText[`bon_goal-status-${status}`], {
+                    STATUS: this.isSpectator ? '' : stringFromTemplate(this.toolTipText[`bon_goal-status-${status}`], {
                         n: short,
                     }),
                     ICON: statusIcons[status],
@@ -586,6 +586,7 @@ function (
             if (!playerId) playerId = this.myPlayerId;
 
             const hostDiv = document.getElementById(`bon_tree-host-${playerId}`);
+            if (!hostDiv) return;
             const rect = hostDiv.getBoundingClientRect();
 
             const { x, y, width, height } = this.calculateBoundingRect(playerId);
