@@ -336,6 +336,7 @@ class BonsaiLogic extends EventEmitter
     function claimGoals($claimGoals)
     {
         $playerId = $this->getNextPlayerId();
+        $player = $this->data->players->$playerId;
 
         foreach ($claimGoals as $goalId)
         {
@@ -343,11 +344,18 @@ class BonsaiLogic extends EventEmitter
             if (array_search($goalId, $this->data->goalTiles) === false)
                 throw new Exception('Goal not available');
 
-            // TODO: has the player already claimed a goal of the same colour?
+            // Has the player already claimed a goal of the same type?
+            $type = BonsaiMats::$GoalTiles[$goalId]['type'];
+            if (count(array_filter($player->claimed, fn($g) => BonsaiMats::$GoalTiles[$g]['type'] === $type)))
+                throw new Exception('Goal type already claimed');
 
             // Has the player already renounced this goal?
-            if (array_search($goalId, $this->data->players->$playerId->renounced))
+            if (array_search($goalId, $player->renounced))
                 throw new Exception('Goal already renounced');
+
+            // Does the player meet the requirements of this goal?
+            if (!$this->doesPlayerQualifyForGoal($playerId, $goalId))
+                throw new Exception('Goal not met');
 
             // Mark the goal as claimed
             $this->data->players->$playerId->claimed[] = $goalId;
@@ -762,6 +770,68 @@ class BonsaiLogic extends EventEmitter
         return null; // We only want to consider protruding outside the pot
     }
 
+    public function doesPlayerQualifyForGoal($playerId, $goalId)
+    {
+        $player = $this->data->players->$playerId;
+
+        $leafMoves = array_filter($player->played, fn($move) => $move[0] == TILETYPE_LEAF);
+        $woodTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_WOOD));
+        $fruitTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_FRUIT));
+
+        $count = 0;
+        $goalTile = BonsaiMats::$GoalTiles[$goalId];
+        switch ($goalTile['type'])
+        {
+            case GOALTYPE_WOOD:
+                $count = $woodTiles;
+                break;
+
+            case GOALTYPE_LEAF:
+                $count = BonsaiLogic::countAdjacentLeafs($leafMoves);
+                break;
+
+            case GOALTYPE_FLOWER:
+                // Check the number of flower tiles beyond the pot edges (on the same side)
+                $rightSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === 1);
+                $leftSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === -1);
+                $count = max($leftSide, $rightSide);
+                // Note: Flower is allowed to be below the pot
+                break;
+                
+            case GOALTYPE_FRUIT:
+                $count = $fruitTiles;
+                break;
+
+            case GOALTYPE_PLACEMENT:
+                switch ($goalTile['size']) {
+                    case GOALSIZE_SMALL:
+                        // Needs to protrude out the side opposite the gold crack in the pot
+                        $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move) === 1));
+                        // TODO: if player can flip the pot, need to take that into account
+                        break;
+
+                    case GOALSIZE_MEDIUM:
+                        $protrudingSides = array_map(fn($move) => BonsaiLogic::getProtrudingDirection($move), $player->played);
+                        $count += array_search(-1, $protrudingSides) === false ? 0 : 1;
+                        $count += array_search(1, $protrudingSides) === false ? 0 : 1;
+                        break;
+
+                    case GOALSIZE_LARGE:
+                        $quadrants = array_values(array_map(fn($move) => BonsaiLogic::getPlacementQuadrant($move), $player->played));
+                        $quad1 = count(array_filter($quadrants, fn($q) => $q === 1)) > 0;
+                        $quad2 = count(array_filter($quadrants, fn($q) => $q === 2)) > 0;
+                        $quad3 = count(array_filter($quadrants, fn($q) => $q === 3)) > 0;
+                        $quad4 = count(array_filter($quadrants, fn($q) => $q === 4)) > 0;
+                        if (count($quadrants)) $count = 1;
+                        if (($quad1 && $quad3) || ($quad2 && $quad4)) $count = 2;
+                        break;
+                }
+                break;
+        }
+
+        return $count >= $goalTile['req'];
+    }
+
     public function getPlayerScore($playerId)
     {
         $final = $this->getGameProgression() >= 100;
@@ -797,58 +867,8 @@ class BonsaiLogic extends EventEmitter
         $goalScore = 0;
         foreach ($player->claimed as $goalId)
         {
-            $count = 0;
-            $goalTile = BonsaiMats::$GoalTiles[$goalId];
-            switch ($goalTile['type'])
-            {
-                case GOALTYPE_WOOD:
-                    $count = $woodTiles;
-                    break;
-
-                case GOALTYPE_LEAF:
-                    $count = BonsaiLogic::countAdjacentLeafs($leafMoves);
-                    break;
-
-                case GOALTYPE_FLOWER:
-                    // Check the number of flower tiles beyond the pot edges (on the same side)
-                    $rightSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === 1);
-                    $leftSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === -1);
-                    $count = max($leftSide, $rightSide);
-                    break;
-                    
-                case GOALTYPE_FRUIT:
-                    $count = $fruitTiles;
-                    break;
-
-                case GOALTYPE_PLACEMENT:
-                    switch ($goalTile['size']) {
-                        case GOALSIZE_SMALL:
-                            // Needs to protrude out the side opposite the gold crack in the pot
-                            $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move) === 1));
-                            // TODO: if player can flip the pot, need to take that into account
-                            break;
-
-                        case GOALSIZE_MEDIUM:
-                            $protrudingSides = array_map(fn($move) => BonsaiLogic::getProtrudingDirection($move), $player->played);
-                            $count += array_search(-1, $protrudingSides) === false ? 0 : 1;
-                            $count += array_search(1, $protrudingSides) === false ? 0 : 1;
-                            break;
-
-                        case GOALSIZE_LARGE:
-                            $quadrants = array_values(array_map(fn($move) => BonsaiLogic::getPlacementQuadrant($move), $player->played));
-                            $quad1 = count(array_filter($quadrants, fn($q) => $q === 1)) > 0;
-                            $quad2 = count(array_filter($quadrants, fn($q) => $q === 2)) > 0;
-                            $quad3 = count(array_filter($quadrants, fn($q) => $q === 3)) > 0;
-                            $quad4 = count(array_filter($quadrants, fn($q) => $q === 4)) > 0;
-                            if (count($quadrants)) $count = 1;
-                            if (($quad1 && $quad3) || ($quad2 && $quad4)) $count = 2;
-                            break;
-                    }
-                    break;
-            }
-
-            if ($count >= $goalTile['req'])
-                $goalScore += $goalTile['points'];
+            if ($this->doesPlayerQualifyForGoal($playerId, $goalId))
+                $goalScore += BonsaiMats::$GoalTiles[$goalId]['points'];
         }
 
         //
