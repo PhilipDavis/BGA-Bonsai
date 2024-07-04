@@ -537,8 +537,8 @@ define([
 
                         case GoalSize.Medium:
                             const protrudingSides = played.map(move => this.getProtrudingDirection(move)).filter(d => d);
-                            count += protrudingSides.indexOf(-1) ? 1 : 0;
-                            count += protrudingSides.indexOf(1) ? 1 : 0;
+                            count += protrudingSides.indexOf(-1) >= 0 ? 1 : 0;
+                            count += protrudingSides.indexOf(1) >= 0 ? 1 : 0;
                             break;
 
                         case GoalSize.Large:

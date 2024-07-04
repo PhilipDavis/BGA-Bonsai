@@ -72,7 +72,7 @@ function (
                 'bon_goal-set-2': __('Your bonsai must have *${n}* leaf tiles, adjacent to one another.'),
                 'bon_goal-set-3': __('Your bonsai must have *${n}* fruit tiles.'),
                 'bon_goal-set-4': __('Your bonsai must have *${n}* flower tiles that protrude from the *same side* of the Pot (it does not matter if it\'s the right or the left side).'),
-                'bon_goal-13': __('Your bonsai must have a tile which *protrudes* out of the pot (on the side shown by the symbol).'),
+                'bon_goal-13': __('Your bonsai must have a tile which *protrudes* out of the pot (on the side with the gold crack).'),
                 'bon_goal-14': __('Your bonsai must have tiles *protruding* from *both sides* of the pot.'),
                 'bon_goal-15': __('Your bonsai must have a tile *protruding* out of the pot on *one side*, and another tile *below* the pot on the *other side* (the specific sides do not matter).'),
                 'bon_goal-warning': __('You may only claim *one Goal tile per color*'),
@@ -1619,7 +1619,7 @@ function (
             await new ReceiveTilesAction(playerId, tileTypes, slot, '').doAsync();
         },
 
-        async notify_goalRenounced({ playerId, goalId }) {
+        async notify_goalRenounced({ playerId, goal: goalId }) {
             if (playerId == this.myPlayerId && !g_archive_mode) return;
 
             await new RenounceGoalAction(playerId, goalId).doAsync();
