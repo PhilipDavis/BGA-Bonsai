@@ -56,7 +56,7 @@ function (
 
             // Hook into this object and overwrite default BGA functions with enhanced functions
             // Note: on Studio, the complete server state is sent to the client
-            install(dojo, this, { debug: !!gamedata.state });
+            install(dojo, this, 'bon_surface', { debug: !!gamedata.state });
             
             const { data, scores } = gamedata;
             bonsai = new BonsaiLogic(data, this.myPlayerId);

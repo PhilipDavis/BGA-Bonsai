@@ -3,9 +3,11 @@
 define([], function () {
     const config = {
         gameName: '', // Leave this blank. Value assigned in install() method.
+        gameRootId: '', // The element ID of the root game DOM tree. This gets mounted into #game_play_area
     };
     const data = {
         nextUniqueId: 1, // Used by stringFromTemplate when replacing ${_UNIQUEID}
+        uninstallers: [], // Functions to undo any changes we make to core stuff
     };
 
     //
@@ -14,23 +16,25 @@ define([], function () {
     // method. Will not work if called in the game constructor!
     //
     // setup() {
-    //     install(dojo, this); // or install(dojo, this, { debug: true });
+    //     install(dojo, this, 'abc_body'); // or install(dojo, this, 'abc_body', { debug: true });
     //
     //     // ...setup your game
     // }
     //
-    function install(dojo, gameui, options = null) {
+    function install(dojo, gameui, gameRootId, options = null) {
         const {
             debug = false,
         } = options || {};
 
         // Save the game name for use later (invoking server actions)
         config.gameName = gameui.game_name;
+        config.gameRootId = gameRootId;
       
         //
         // dojo.string.substitute
         //
         const _substitute = dojo.string.substitute;
+        data.uninstallers.push(() => dojo.string.substitute = _substitute);
         dojo.string.substitute = function() {
             try {
                 const [ template, replacements ] = arguments;
@@ -47,6 +51,8 @@ define([], function () {
         //
         // format_block
         //
+        const _format_block = gameui.__proto__.format_block;
+        data.uninstallers.push(() => gameui.__proto__.format_block = _format_block);
         gameui.__proto__.format_block = (templateName, replacements) => {
             return formatBlock(templateName, replacements, debug);
         };
@@ -55,6 +61,7 @@ define([], function () {
         // format_string_recursive
         //
         const _fsr = gameui.__proto__.format_string_recursive;
+        data.uninstallers.push(() => gameui.__proto__.format_string_recursive = _fsr);
         gameui.__proto__.format_string_recursive = function() {
             // Note: mine does not perform recursion!!
 
@@ -95,6 +102,33 @@ define([], function () {
         // Register the AJAX notification handlers
         //
         setupNotifications();
+
+        //
+        // Add an observer to watch for DOM changes and undo
+        // the changes we make to core BGA / Dojo stuff when
+        // the game is unmounted
+        //
+        (() => {
+            const bgaContainer = document.getElementById('game_play_area');
+
+            new MutationObserver((mutationList, observer) => {
+                for (const mutation of mutationList) {
+                    if (mutation.type !== 'childList') continue;
+                    if (config.gameRootId && !bgaContainer.querySelector(`& > #${config.gameRootId}`)) {
+                        observer.disconnect();
+                        while (data.uninstallers.length) {
+                            try {
+                                const uninstall = data.uninstallers.shift();
+                                uninstall();
+                            }
+                            catch (err) {
+                                console.error(err);
+                            }
+                        }
+                    }
+                }
+            }).observe(bgaContainer, { childList: true });
+        })();
     }
 
     //
