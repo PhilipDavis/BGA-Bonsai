@@ -232,6 +232,7 @@ define([
     class BonsaiLogic {
         constructor(data, myPlayerId) {
             this.myPlayerId = myPlayerId;
+            this.isSpectator = data.order.indexOf(myPlayerId) === -1;
             this.data = data;
             this.trees = {};
             for (const [ playerId, player ] of Object.entries(data.players)) {
@@ -317,6 +318,7 @@ define([
         }
 
         get tilesOverCapacity() {
+            if (this.isSpectator) return 0;
             const { inventory, capacity } = this.data.players[this.myPlayerId];
             return Math.max(0, Object.values(inventory).reduce((over, n) => over + n, -capacity));
         }
@@ -347,6 +349,7 @@ define([
         }
 
         getLegalMoves({ resourceFilter } = {}) {
+            if (this.isSpectator) return {};
             const player = this.data.players[this.myPlayerId];
             const { inventory } = player;
 
@@ -381,6 +384,7 @@ define([
         // consider inventory here.
         //
         getCanPlayResourceFilter() {
+            if (this.isSpectator) return false;
             const canPlay = { ...this.data.players[this.myPlayerId].canPlay };
             for (const tt of Object.values(TileType)) {
                 canPlay[TileTypeName[tt]] -= this.placedThisTurn[tt];
@@ -401,6 +405,7 @@ define([
 
         // Is it legal for the player to play the given tile type (only considering Seishi limits)
         isPlayerWithinTurnCap(tileType) {
+            if (this.isSpectator) return true;
             const playerTurnCap = this.data.players[this.myPlayerId].canPlay;
             let wildCap = playerTurnCap.wild;
             for (const tt of Object.values(TileType)) {
@@ -420,6 +425,7 @@ define([
         }
 
         getTileCount(resourceFilter = null) {
+            if (this.isSpectator) return 0;
             const { inventory } = this.data.players[this.myPlayerId];
             const tileCount = Object.entries(inventory).reduce((sum, [ tileTypeName, n ]) => {
                 if (resourceFilter) {
@@ -433,6 +439,7 @@ define([
         }
 
         getExcessTileCount() {
+            if (this.isSpectator) return 0;
             const { inventory, capacity } = this.data.players[this.myPlayerId];
             const tileCount = Object.values(inventory).reduce((sum, n) => sum + n, 0);
             return Math.max(0, tileCount - capacity);
@@ -473,6 +480,7 @@ define([
         }
 
         getGoalStatus(goalId) {
+            if (this.isSpectator) return { goalId, status: GoalStatus.None };
             const { renounced, claimed, played } = this.data.players[this.myPlayerId];
 
             //

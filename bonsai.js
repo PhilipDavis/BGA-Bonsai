@@ -308,6 +308,8 @@ function (
         },
 
         onClickFaceDownPile() {
+            if (this.isSpectator) return 0;
+
             // Group cards of the same type together
             function sortFaceDownCards(cardA, cardB) {
                 typeA = Cards[cardA].type;
