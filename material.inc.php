@@ -15,7 +15,7 @@ BonsaiMats::$GoalTiles = [
         'size' => GOALSIZE_SMALL,
         'req' => 8,
         'points' => 5,
-        'log' => clienttranslate('small brown goal'),
+        'log' => clienttranslate('the small brown goal'),
     ],
     2 => [
         'type' => GOALTYPE_WOOD,
