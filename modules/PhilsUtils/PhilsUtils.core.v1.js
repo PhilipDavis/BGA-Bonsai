@@ -175,13 +175,18 @@ define([], function () {
         }
 
         //
-        // Note: this regex is not 100% perfect... it watches for an escaped
+        // Note: this regex is not 100% perfect... it watches* for an escaped
         // '$' character but it's possible to break the expected behaviour
         // with input like "Hello $$${WORLD}" -- in this case, no replacement
         // happens even though it should. I figure this will never happen in
         // a real-world scenario.
         //
-        return template.replace(/(?<!\$)\$\{(?<name>.*?)(?:\[(?<index>.+?)\])?\}/g, (match, name, index) => {
+        // *Note: Safari 15.6 doesn't support the negative look behind
+        //   /(?<!\$)\$\{(?<name>.*?)(?:\[(?<index>.+?)\])?\}/g
+        // So, I changed the regex to not look for escaped $ symbols.
+        // This still shouldn't be a problem for use in BGA games.
+        //
+        return template.replace(/\$\{(?<name>.*?)(?:\[(?<index>.+?)\])?\}/g, (match, name, index) => {
             if (name === '_UNIQUEID') {
                 replacements[name] = `${config.gameName}_uniqueid-${data.nextUniqueId++}`;
             }
