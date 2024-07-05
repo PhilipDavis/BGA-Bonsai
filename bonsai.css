@@ -179,30 +179,20 @@ body {
     height: 6.5em;
     top: 1.05em;
     left: 1.05em;
-    background-image: url(img/bon_cards.png);
-    background-repeat: no-repeat;
-    background-size: 41.94em 26em;
-    background-position: 0 0;
-    border: solid .1em rgba(0,0,0,.3);
-    border-radius: .5em;
     perspective: 10em;
-}
-#bon_deck.bon_empty {
-    background: none;
-    border: solid .1em transparent;
 }
 #bon_deck .bon_card {
     position: absolute;
 }
-#bon_deck .bon_card:nth-of-type(1) { left: -.1em; top: -.1em; }
-#bon_deck .bon_card:nth-of-type(2) { left: -.2em; top: -.2em; }
-#bon_deck .bon_card:nth-of-type(3) { left: -.3em; top: -.3em; }
-#bon_deck .bon_card:nth-of-type(4) { left: -.4em; top: -.4em; }
-#bon_deck .bon_card:nth-of-type(5) { left: -.5em; top: -.5em; }
-#bon_deck .bon_card:nth-of-type(6) { left: -.6em; top: -.6em; }
-#bon_deck .bon_card:nth-of-type(7) { left: -.7em; top: -.7em; }
-#bon_deck .bon_card:nth-of-type(8) { left: -.8em; top: -.8em; }
-#bon_deck .bon_card:nth-of-type(9) { left: -.9em; top: -.9em; }
+#bon_deck .bon_card:nth-of-type(1) { left:   0em; top:   0em; }
+#bon_deck .bon_card:nth-of-type(2) { left: -.1em; top: -.1em; }
+#bon_deck .bon_card:nth-of-type(3) { left: -.2em; top: -.2em; }
+#bon_deck .bon_card:nth-of-type(4) { left: -.3em; top: -.3em; }
+#bon_deck .bon_card:nth-of-type(5) { left: -.4em; top: -.4em; }
+#bon_deck .bon_card:nth-of-type(6) { left: -.5em; top: -.5em; }
+#bon_deck .bon_card:nth-of-type(7) { left: -.6em; top: -.6em; }
+#bon_deck .bon_card:nth-of-type(8) { left: -.7em; top: -.7em; }
+#bon_deck .bon_card:nth-of-type(9) { left: -.8em; top: -.8em; }
 
 .bon_slot {
     position: absolute;
