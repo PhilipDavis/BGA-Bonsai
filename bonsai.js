@@ -192,7 +192,7 @@ function (
 
             this.capacity[playerId] = new ebg.counter();
             this.capacity[playerId].create(`bon_capacity-${playerId}`);
-            this.setPlayerCapacity(playerId, 5);
+            this.setPlayerCapacity(playerId, player.capacity);
 
             const [ lhs, rhs ] = bonsai.getPlayerSeishi(playerId);
             for (const cardId of lhs) {
@@ -1658,9 +1658,8 @@ function (
         },
 
         async notify_capacityIncreased({ playerId, delta }) {
-            if (playerId == this.myPlayerId && !g_archive_mode) return;
-
-            this.adjustPlayerCapacity(playerId, delta);
+            // This notification is just for the log.
+            // The actual capacity was already adjusted in notify_cardTaken / TakeCardAction
         },
 
         async notify_cardRevealed({ cardId }) {

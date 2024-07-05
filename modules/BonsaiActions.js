@@ -265,18 +265,14 @@ class TakeCardAction extends Action {
 
         await cardPromise; // TODO: collapse
 
-        if (this.playerId == gameui.myPlayerId) {
-            if (cardType === CardType.Tool) {
-                gameui.adjustPlayerCapacity(this.playerId, 2);
-            }
+        if (cardType === CardType.Tool) {
+            gameui.adjustPlayerCapacity(this.playerId, 2);
         }
     }
 
     async undoAsync() {
-        if (this.playerId == gameui.myPlayerId) {
-            if (this.cardType === CardType.Tool) {
-                gameui.adjustPlayerCapacity(this.playerId, -2);
-            }
+        if (this.cardType === CardType.Tool) {
+            gameui.adjustPlayerCapacity(this.playerId, -2);
         }
 
         //
