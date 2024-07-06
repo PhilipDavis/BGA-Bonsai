@@ -583,7 +583,8 @@ class BonsaiLogic
         $this->events->onEndTurn($playerId, $score);
 
         $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
-        $this->data->move++;
+        if (isset($this->data->move))
+            $this->data->move++;
 
         if ($this->data->finalTurns === 0)
         {
