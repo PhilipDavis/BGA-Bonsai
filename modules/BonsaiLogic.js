@@ -550,7 +550,7 @@ define([
                             break;
 
                         case GoalSize.Large:
-                            const quadrants = played.map(move => this.getPlacementQuadrant(move)).filter(q => q != 0);
+                            const quadrants = played.map(move => this.getPlacementQuadrant(move)).filter(q => !!q);
                             if (quadrants.length > 0) count++;
                             if ((quadrants.some(q => q === 1) && quadrants.some(q => q === 3)) ||
                                 (quadrants.some(q => q === 2) && quadrants.some(q => q === 4))
