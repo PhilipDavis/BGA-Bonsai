@@ -7,10 +7,10 @@
  * -----
  */
 
-body {
+#page-content {
     /*
-        Force the body to be an offsetParent because we temporarily elevate child
-        elements up to the body while we're animating their position.
+        Force this to be an offsetParent because we temporarily elevate child
+        elements here while we're animating their position.
     */
     position: relative;
 }
