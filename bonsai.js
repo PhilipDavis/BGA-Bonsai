@@ -1598,10 +1598,6 @@ function (
         },
 
         async notify_tilesAdded({ playerId, tiles, score }) {
-            if (bonsai.isLastTurn) {
-                bonsai.countdownFinalTurns();
-            }
-
             if (playerId != this.myPlayerId || g_archive_mode) {
                 for (const { type, x, y, r } of tiles) {
                     // Find the first inventory tile of the specified type
@@ -1637,10 +1633,6 @@ function (
         },
 
         async notify_cardTaken({ playerId, cardId }) {
-            if (bonsai.isLastTurn) {
-                bonsai.countdownFinalTurns();
-            }
-
             // Only act out the actions for other players because
             // this player's UI has already been updated locally.
             if (playerId != this.myPlayerId || g_archive_mode) {
@@ -1695,6 +1687,12 @@ function (
                 }
                 bonsai.adjustPlayerInventory(playerId, tileType, delta);
             }
+        },
+
+        async notify_endTurn({ playerId, score }) {
+            bonsai.endTurn();
+            this.resetClientStateArgs();
+            this.scoreCounter[playerId].setValue(score);
         },
 
         async notify_finalScore({ scores, reveal }) {

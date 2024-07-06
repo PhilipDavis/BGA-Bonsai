@@ -91,6 +91,7 @@ class BonsaiLogic extends EventEmitter
             'board' => $board,
             'goalTiles' => $goalTiles,
             'finalTurns' => null, // Once draw pile is exhausted, this counts down from <# of players> to 0
+            'move' => 1,
         ]);
     }
 
@@ -217,19 +218,10 @@ class BonsaiLogic extends EventEmitter
 
     function cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals)
     {
-        // In end game, reduce the number of final turns left
-        if (isset($this->data->finalTurns))
-            $this->data->finalTurns--;
-
         $this->removeTiles($removeTiles);
         $this->placeTiles($placeTiles);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
-
-        $score = $this->getPlayerScore($this->getNextPlayerId())['total'];
-        $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
-
-        return $score;
     }
 
     function removeTiles($removeTiles)
@@ -376,21 +368,12 @@ class BonsaiLogic extends EventEmitter
 
     function meditate($drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
     {
-        // In end game, reduce the number of final turns left
-        if ($this->data->finalTurns !== null)
-            $this->data->finalTurns--;
-
         $this->drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles);
         $this->placeTiles($placeTiles);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
         $this->discardTiles($discardTiles);
         $this->revealCard();
-
-        $score = $this->getPlayerScore($this->getNextPlayerId())['total'];
-        $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
-
-        return $score;
     }
 
     function drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles)
@@ -576,6 +559,19 @@ class BonsaiLogic extends EventEmitter
     //
     // General Methods
     //
+
+    public function endTurn()
+    {
+        // In end game, reduce the number of final turns left
+        if ($this->data->finalTurns !== null)
+            $this->data->finalTurns--;
+
+        $score = $this->getPlayerScore($this->getNextPlayerId())['total'];
+        $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
+        $this->data->move++;
+
+        return $score;
+    }
 
     public function getNextPlayerId()
     {

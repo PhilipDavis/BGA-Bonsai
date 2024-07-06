@@ -228,8 +228,7 @@ class Bonsai extends Table
         $stateBefore = $bonsai->toJson();
         try
         {
-            $score = $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
-            $this->setPlayerScore($activePlayerId, $score);
+            $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
         }
         catch (Throwable $e)
         {
@@ -324,8 +323,7 @@ class Bonsai extends Table
         $stateBefore = $bonsai->toJson();
         try
         {
-            $score = $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
-            $this->setPlayerScore($activePlayerId, $score);
+            $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
         }
         catch (Throwable $e)
         {
@@ -470,10 +468,19 @@ class Bonsai extends Table
 
     function stEndTurn()
     {
-        $gameTurn = $this->getGameStateValue('gameTurn');
-        $this->setGameStateValue('gameTurn', $gameTurn + 1);
-
         $bonsai = $this->loadGameState();
+
+        $previousPlayerId = $bonsai->getNextPlayerId();
+        $score = $bonsai->endTurn();
+
+        $this->saveGameState($bonsai);
+        
+        $this->notifyAllPlayers('endTurn', '', [
+            'score' => $score,
+            'playerId' => $previousPlayerId,
+            'preserve' => [ 'score', 'playerId' ],
+        ]);
+
         if ($bonsai->getGameProgression() >= 100)
         {
             // Update game stats

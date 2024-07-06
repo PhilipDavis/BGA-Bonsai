@@ -647,6 +647,17 @@ define([
         countdownFinalTurns() {
             this.data.finalTurns--;
         }
+
+        endTurn() {
+            if (this.isLastTurn) {
+                this.countdownFinalTurns();
+            }
+            this.data.move++;
+        }
+
+        get turn() {
+            return this.data.move;
+        }
     }
 
     return {
