@@ -309,7 +309,7 @@ class Bonsai extends Table implements BonsaiEvents
     {
         $activePlayerId = $this->validateCaller();
 
-        $bonsai = $this->loadGameState([ 'cardTaken', 'capacityIncreased', 'tilesReceived', 'tilesAdded', 'tilesDiscarded', 'cardRevealed', 'lastRound' ]);
+        $bonsai = $this->loadGameState();
         $stateBefore = $bonsai->toJson();
         try
         {

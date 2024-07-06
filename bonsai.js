@@ -957,8 +957,6 @@ function (
         async animateCardReplacementAsync(nextCardId) {
             const promises = [];
 
-            // TODO: move board cycling and slot determination into game logic
-
             let slot;
             for (slot = 3; slot > 0; slot--) {
                 if (!bonsai.board[slot]) break;
