@@ -35,8 +35,6 @@ class Bonsai extends Table
         
         $this->initGameStateLabels([
             // Game State
-            "goalTypes" => 10,
-            "gameTurn" => 11,
 
             // Game Options
             "OPT_RULES" => 100,
@@ -97,10 +95,7 @@ class Bonsai extends Table
         // In case of a tie, the winner is the tied player who took their first turn last
         $this->DbQuery("UPDATE player SET player_score_aux = player_no"); // TODO: this is wrong... this is table join order, not player order
         
-        /************ Start the game initialization *****/
-
-        $this->setGameStateInitialValue('gameTurn', 1);
-        
+        /************ Start the game initialization *****/        
         // Init game statistics
         $this->initStat('player', 'wood_tiles', 0);
         $this->initStat('player', 'leaf_tiles', 0);

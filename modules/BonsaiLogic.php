@@ -82,7 +82,7 @@ class BonsaiLogic extends EventEmitter
         // Step G: Keep the Scoring Pad handy
 
         return new BonsaiLogic((object)[
-            'version' => 1, // Only need to increment for breaking changes after beta release
+            'v' => 1, // Only need to increment for breaking changes after beta release
             'options' => (array)$options,
             'order' => $playerIds,
             'nextPlayer' => 0,
