@@ -879,7 +879,7 @@ function (
             this.capacity[playerId].setValue(value);
         },
 
-        makeTilesSelectable({ onlyLegal = false, resourceFilter } = {}) {
+        makeTilesSelectable({ onlyLegal = false, scrollIntoView = false, resourceFilter } = {}) {
             // Calculate legal moves, if necessary
             if (onlyLegal) {
                 this.clientStateArgs.legalMoves = bonsai.getLegalMoves({ resourceFilter });
@@ -903,6 +903,12 @@ function (
                 div.classList.add('bon_selectable');
                 enabledSome = true;
             }
+
+            if (enabledSome && scrollIntoView) {
+                const containerDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);
+                containerDiv.scrollIntoView({ block: 'end', inline: 'center', behavior: 'smooth' }); 
+            }
+
             return enabledSome;
         },
 
@@ -1342,7 +1348,7 @@ function (
             // Discard tiles if necessary
             let discarded = 0;
             while (bonsai.tilesOverCapacity) {
-                this.makeTilesSelectable();
+                this.makeTilesSelectable({ scrollIntoView: true });
 
                 const n = bonsai.tilesOverCapacity;
                 const msg =
@@ -1384,7 +1390,7 @@ function (
             
             while (true) {
                 // Highlight the legal tile selections; bail out if there are none 
-                if (!this.makeTilesSelectable({ resourceFilter, onlyLegal: true })) {
+                if (!this.makeTilesSelectable({ resourceFilter, scrollIntoView: true, onlyLegal: true })) {
                     // Show a slightly different message if the player
                     // has tiles but can't legally play any of them.
                     setTimeout(() => this.workflowManager.advanceAsync(), 1500);

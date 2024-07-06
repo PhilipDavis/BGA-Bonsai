@@ -412,6 +412,7 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 1.5em;
+    scroll-margin-bottom: 2em;
 }
 
 .bon_tiles-host .bon_tile {
