@@ -359,6 +359,29 @@ class BonsaiLogic extends EventEmitter
                 'score' => $this->getPlayerScore($playerId)['total'],
             ]);
         }
+
+        // Now that goals have been renounced (earlier) and claimed here,
+        // Check to make sure that there are no *other* goals that the
+        // player is currently eligible for -- because, if they were
+        // eligible, then that goal should have appeared in the renounce
+        // or claim sets.
+        foreach ($this->data->goalTiles as $goalId)
+        {
+            // Has the player already claimed a goal of the same type?
+            $type = BonsaiMats::$GoalTiles[$goalId]['type'];
+            if (count(array_filter($player->claimed, fn($g) => BonsaiMats::$GoalTiles[$g]['type'] === $type)))
+                continue;
+
+            // Has the player already renounced this goal?
+            if (array_search($goalId, $player->renounced) !== false)
+                continue;
+
+            // Does the player meet the requirements of this goal?
+            if (!$this->doesPlayerQualifyForGoal($playerId, $goalId))
+                continue;
+
+            throw new Exception('Decision required for goal ' . strval($goalId));
+        }
     }
 
 
@@ -461,7 +484,7 @@ class BonsaiLogic extends EventEmitter
 
             case 1: // You may take 1 wood or 1 leaf tile
                 if ($woodOrLeaf != TILETYPE_WOOD && $woodOrLeaf != TILETYPE_LEAF)
-                    throw new Exception('Invalid tile draw');
+                    throw new Exception('Expecting wood or leaf');
                 $tileTypes = [ $woodOrLeaf ];
                 break;
             
