@@ -271,7 +271,8 @@ class TakeCardAction extends Action {
     }
 
     async undoAsync() {
-        if (this.cardType === CardType.Tool) {
+        const cardType = Cards[this.cardId].type;
+        if (cardType === CardType.Tool) {
             gameui.adjustPlayerCapacity(this.playerId, -2);
         }
 
