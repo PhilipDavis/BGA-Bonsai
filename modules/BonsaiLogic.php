@@ -221,8 +221,11 @@ class BonsaiLogic
 
     function cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals)
     {
+        $playerId = $this->getNextPlayerId();
+        $player = $this->data->players->$playerId;
+
         $this->removeTiles($removeTiles);
-        $this->placeTiles($placeTiles);
+        $this->placeTiles($placeTiles, $player->canPlay);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
     }
@@ -254,11 +257,11 @@ class BonsaiLogic
         }
     }
 
-    function placeTiles($placeTiles)
+    function placeTiles($placeTiles, object $canPlay)
     {
         $playerId = $this->getNextPlayerId();
         $player = $this->data->players->$playerId;
-        $canPlay = json_decode(json_encode($player->canPlay));
+        $canPlay = clone $canPlay;
         $inventory = $player->inventory;
 
         foreach ($placeTiles as $tile)
@@ -383,17 +386,22 @@ class BonsaiLogic
 
     function meditate($drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
     {
-        $this->drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles);
-        $this->placeTiles($placeTiles);
+        $canPlay = (object)[];
+        $this->drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, $canPlay);
+        $this->placeTiles($placeTiles, $canPlay);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
         $this->discardTiles($discardTiles);
         $this->revealCard();
     }
 
-    function drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles)
+    function drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, object &$canPlay)
     {
         $playerId = $this->getNextPlayerId();
+
+        // By default, the player is not allowed to place any tiles during Meditate action.
+        // Howerver, the Helper cards allow the player to place some tiles.
+        $canPlay = (object)[ 'wood' => 0, 'leaf' => 0, 'flower' => 0, 'fruit' => 0, 'wild' => 0 ];
 
         // Does the card exist in the available board slots?
         $index = array_search($drawCardId, $this->data->board);
@@ -457,6 +465,11 @@ class BonsaiLogic
 
             case CARDTYPE_HELPER:
                 $this->data->players->$playerId->faceDown[] = $drawCardId;
+                foreach ($card->resources as $tileTypeId)
+                {
+                    $tileTypeName = $tileTypeId === TILETYPE_WILD ? 'wild' : BonsaiMats::$TileTypes[$tileTypeId]['name'];
+                    $canPlay->$tileTypeName++;
+                }
                 break;
 
             case CARDTYPE_PARCHMENT:
