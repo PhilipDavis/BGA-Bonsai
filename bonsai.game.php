@@ -233,7 +233,7 @@ class Bonsai extends Table
         catch (Throwable $e)
         {
             $refId = uniqid();
-            $this->trace(implode(', ', [
+            $this->error(implode(', ', [
                 'Ref #' . $refId . ': cultivate failed',
                 'player: ' . $activePlayerId,
                 'inputs: ' . json_encode([ $removeTiles, $placeTiles, $renounceGoals, $claimGoals ]),
@@ -328,7 +328,7 @@ class Bonsai extends Table
         catch (Throwable $e)
         {
             $refId = uniqid();
-            $this->trace(implode(', ', [
+            $this->error(implode(', ', [
                 'Ref #' . $refId . ': meditate failed',
                 'player: ' . $activePlayerId,
                 'inputs: ' . json_encode([ $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles ]),
