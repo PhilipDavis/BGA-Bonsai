@@ -22,7 +22,7 @@ function (
     dojo,
     declare,
     { install, formatBlock, __, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
-    { delayAsync, WorkflowManager, ActionStack, SetClientState, UndoLastAction, reflow },
+    { delayAsync, transitionStyleAsync, WorkflowManager, ActionStack, SetClientState, UndoLastAction, reflow },
     { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalType, GoalSize, GoalStatus, TileType, TileTypeName, Direction },
     { PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction },
 ) {
@@ -165,7 +165,7 @@ function (
                     this.createTileInTree(playerId, type, x, y, r);
                 }
             }
-            this.adjustTreeSizeAndPos(playerId);
+            this.adjustTreeSizeAndPosAsync(playerId);
 
             this.scoreCounter[playerId] = new ebg.counter();
             this.scoreCounter[playerId].create(`player_score_${playerId}`);
@@ -584,11 +584,19 @@ function (
             };
         },
 
-        adjustTreeSizeAndPos(playerId) {
+        async adjustTreeSizeAndPosAsync(playerId) {
             if (!playerId) playerId = this.myPlayerId;
 
             const hostDiv = document.getElementById(`bon_tree-host-${playerId}`);
             if (!hostDiv) return;
+
+            const aTileDiv = hostDiv.querySelector('.bon_tile');
+            if (!aTileDiv) {
+                // The game just started if there are no tiles,
+                // so we don't need to reposition the tree.
+                return;
+            }
+
             const rect = hostDiv.getBoundingClientRect();
 
             const { x, y, width, height } = this.calculateBoundingRect(playerId);
@@ -612,35 +620,31 @@ function (
             }
 
             const treeDiv = document.getElementById(`bon_tree-${playerId}`);
-            treeDiv.style.bottom = `${extentBelowPot}px`;
+            await transitionStyleAsync(treeDiv, style => {
+                style.bottom = `${extentBelowPot}px`;
 
 // TODO: try a new strategy where we make a div be exactly the size
 // of the bounding box of the tree and allow the browser to center it
 
-            // Reposition the pot horizonally when the tree grows to within one tile-width of the sides
-            const aTileDiv = hostDiv.querySelector('.bon_tile');
-            if (!aTileDiv) {
-                // The game just started if there are no tiles,
-                // so we don't need to reposition the tree.
-                return;
-            }
+                // Reposition the pot horizonally when the tree grows to within one tile-width of the sides
 
-            const tileWidth = Math.round(aTileDiv.getBoundingClientRect().width);
-            const x1 = x - tileWidth;
-            const x2 = x + width + tileWidth - 1;
-            const leftOverflow = Math.round(Math.max(0, rect.x - x1));
-            const rightOverflow = Math.round(Math.max(0, x2 - rect.right));
-            if (rightOverflow && !leftOverflow) { // TODO: instead of !leftOverflow, should check roomToShiftLeft
-                // We're too close to the right edge; shift left
-                treeDiv.style.left = `calc(50% - ${rightOverflow}px)`;
-            }
-            else if (leftOverflow && !rightOverflow) {
-                treeDiv.style.left = `calc(50% + ${leftOverflow}px)`;
-            }
-            else if (leftOverflow && rightOverflow) {
-                treeDiv.style.left = `50%`;
-                // TODO: scale the image down to fit exactly (minus the one-tile padding)
-            }
+                const tileWidth = Math.round(aTileDiv.getBoundingClientRect().width);
+                const x1 = x - tileWidth;
+                const x2 = x + width + tileWidth - 1;
+                const leftOverflow = Math.round(Math.max(0, rect.x - x1));
+                const rightOverflow = Math.round(Math.max(0, x2 - rect.right));
+                if (rightOverflow && !leftOverflow) { // TODO: instead of !leftOverflow, should check roomToShiftLeft
+                    // We're too close to the right edge; shift left
+                    style.left = `calc(50% - ${rightOverflow}px)`;
+                }
+                else if (leftOverflow && !rightOverflow) {
+                    style.left = `calc(50% + ${leftOverflow}px)`;
+                }
+                else if (leftOverflow && rightOverflow) {
+                    style.left = `50%`;
+                    // TODO: scale the image down to fit exactly (minus the one-tile padding)
+                }
+            });
         },
 
 

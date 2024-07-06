@@ -6,7 +6,7 @@ define([
     "bgagame/modules/BonsaiLogic",
 ], (
     { createFromTemplate },
-    { delayAsync, transitionInAsync, transitionOutAsync, getSiblingIndex, Action },
+    { delayAsync, transitionInAsync, transitionOutAsync, transitionStyleAsync, getSiblingIndex, Action },
     { Cards, CardType, Goals, TileType },
 ) => {
 
@@ -101,7 +101,7 @@ class PlaceTileAction extends Action {
         gameui.adjustPlayerPlaced(this.playerId, this.tileType, 1);
 
         // Grow the tree / host
-        gameui.adjustTreeSizeAndPos(this.playerId);
+        await gameui.adjustTreeSizeAndPosAsync(this.playerId);
 
         // Update the tool tips in case goal progressions changed
         gameui.updateGoalTooltips();
@@ -173,7 +173,7 @@ class PlaceTileAction extends Action {
         gameui.destroyAllVacancies();
 
         // Shrink the tree / host
-        gameui.adjustTreeSizeAndPos(this.playerId);
+        await gameui.adjustTreeSizeAndPosAsync(this.playerId);
 
         //
         // Increment the player's inventory

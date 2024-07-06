@@ -53,6 +53,31 @@ define([], () => {
     }
 
     //
+    // Wait for an element to finish transitioning after changing
+    // one or more of its style properties.
+    //
+    // e.g.
+    // await transitionStyleAsync(div, style => {
+    //     style.top = '-50px';
+    //     style.opacity = 0;
+    // });
+    //
+    async function transitionStyleAsync(div, fnStyle, timeout = 400) {
+        return new Promise(resolve => {
+            const timeoutId = setTimeout(done, timeout);
+            function done() {
+                clearTimeout(timeoutId);
+                div.removeEventListener('transitionend', done);
+                div.removeEventListener('transitioncancel', done);
+                resolve();
+            }
+            div.addEventListener('transitionend', done, { once: true });
+            div.addEventListener('transitioncancel', done, { once: true });
+            fnStyle(div.style);
+        });
+    }
+
+    //
     // Returns the 0-based offset of the element within its sibling elements
     //
     function getSiblingIndex(elementId) {
@@ -287,6 +312,7 @@ define([], () => {
         delayAsync,
         transitionInAsync,
         transitionOutAsync,
+        transitionStyleAsync,
         getSiblingIndex,
         WorkflowManager,
         Action,
