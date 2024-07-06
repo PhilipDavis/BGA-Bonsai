@@ -642,6 +642,11 @@ define([
             return this.trees[playerId];
         }
 
+        reduceDrawPile() {
+            if (!this.data.drawPile) throw new Error('Draw pile empty');
+            this.data.drawPile--;
+        }
+
         get isLastTurn() {
             return typeof this.data.finalTurns === 'number' && this.data.finalTurns > 0;
         }

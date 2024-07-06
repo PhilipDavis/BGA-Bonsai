@@ -978,7 +978,7 @@ function (
 
             bonsai.board[0] = nextCardId;
             if (nextCardId) {
-                bonsai.data.drawPile--;
+                bonsai.reduceDrawPile();
 
                 promises.push((async () => {
                     // Wait for the other cards to have started their animations
