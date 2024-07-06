@@ -11,6 +11,7 @@
 
 require_once(APP_GAMEMODULE_PATH.'module/table/table.game.php');
 require_once('modules/BonsaiLogic.php');
+require_once('modules/BonsaiEvents.php');
 
 define('OPT_RULES', 'OPT_RULES');
 define('OPT_RULES_STANDARD', 1);
@@ -21,7 +22,7 @@ define('OPT_GOALTILES_YES', 1);
 define('OPT_GOALTILES_NO', 2);
 
 
-class Bonsai extends Table
+class Bonsai extends Table implements BonsaiEvents
 {
 	function __construct()
 	{
@@ -117,7 +118,7 @@ class Bonsai extends Table
             'goalTiles' => $this->getOption(OPT_GOALTILES) == OPT_GOALTILES_YES,
         ];
 
-        $bonsai = BonsaiLogic::newGame($playerColorIndices, $gameOptions);
+        $bonsai = BonsaiLogic::newGame($playerColorIndices, $gameOptions, $this);
         $this->initializeGameState($bonsai);
 
         // Must set the first active player
@@ -158,16 +159,10 @@ class Bonsai extends Table
         $this->DbQuery("INSERT INTO game_state (doc) VALUES ('$json')");
     }
 
-    protected function loadGameState(array $events = [])
+    protected function loadGameState()
     {
         $json = $this->getObjectFromDB("SELECT id, doc FROM game_state LIMIT 1")['doc'];
-        $bonsai = BonsaiLogic::fromJson($json);
-
-        // TODO: wire up automatically using reflection
-        foreach ($events as $eventName)
-            $bonsai->on($eventName, [ $this, 'notify_' . $eventName ]);
-
-        return $bonsai;
+        return BonsaiLogic::fromJson($json, $this);
     }
 
     protected function saveGameState(BonsaiLogic $bonsai)
@@ -219,7 +214,7 @@ class Bonsai extends Table
     {
         $activePlayerId = $this->validateCaller();
 
-        $bonsai = $this->loadGameState([ 'tileRemoved', 'tilesAdded', 'goalRenounced', 'goalClaimed' ]);
+        $bonsai = $this->loadGameState();
         $stateBefore = $bonsai->toJson();
         try
         {
@@ -243,14 +238,14 @@ class Bonsai extends Table
         $this->gamestate->nextState('endTurn');
     }
 
-    function notify_tileRemoved($playerId, $tileId, $x, $y, $score)
+    function onTileRemoved($playerId, $tileTypeId, $x, $y, $score)
     {
         $this->notifyAllPlayers('tileRemoved', clienttranslate('${playerName} removes a tile'), [
             'i18n' => [ '_tile' ],
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
             '_tile' => _('a tile'),
-            'tile' => $tileId,
+            'tile' => $tileTypeId,
             'x' => $x,
             'y' => $y,
             'score' => $score,
@@ -258,7 +253,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_tilesAdded($playerId, $placeTiles, $score)
+    function onTilesAdded($playerId, $placeTiles, $score)
     {
         // TODO: stats
 
@@ -277,7 +272,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_goalRenounced($playerId, $goalId)
+    function onGoalRenounced($playerId, $goalId)
     {
         $this->incStat(1, 'goals_renounced', $playerId);
 
@@ -293,7 +288,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_goalClaimed($playerId, $goalId, $score)
+    function onGoalClaimed($playerId, $goalId, $score)
     {
         $this->incStat(1, 'goals_claimed', $playerId);
 
@@ -338,7 +333,7 @@ class Bonsai extends Table
         $this->gamestate->nextState('endTurn');
     }
 
-    function notify_cardTaken($playerId, $cardId)
+    function onCardTaken($playerId, $cardId)
     {
         $card = BonsaiMats::$Cards[$cardId];
         switch ($card->type)
@@ -370,7 +365,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_capacityIncreased($playerId, $delta)
+    function onCapacityIncreased($playerId, $delta)
     {
         $this->notifyAllPlayers('capacityIncreased', clienttranslate('${playerName} capacity increases by ${delta}'), [
             'playerName' => $this->getPlayerNameById($playerId),
@@ -380,7 +375,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_tilesReceived($playerId, $tileTypes, $slot)
+    function onTilesReceived($playerId, $tileTypes, $slot)
     {
         foreach ($tileTypes as $tileType)
         {
@@ -412,7 +407,7 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_cardRevealed($cardId)
+    function onCardRevealed($cardId)
     {
         // We use a null $cardId when there are no cards left.
         // In this case, the client code still needs to animate
@@ -426,12 +421,12 @@ class Bonsai extends Table
         ]);
     }
 
-    function notify_lastRound()
+    function onLastRound()
     {
         $this->notifyAllPlayers('lastRound', clienttranslate('The draw pile is empty! This is the Last round.'), []);
     }
 
-    function notify_tilesDiscarded($playerId, $tiles)
+    function onTilesDiscarded($playerId, $tiles)
     {
         $this->incStat(count($tiles), 'tiles_discarded', $playerId);
         
@@ -445,16 +440,14 @@ class Bonsai extends Table
         ]);
     }
 
-    
-//////////////////////////////////////////////////////////////////////////////
-//////////// Game state arguments
-////////////
-
-    /*
-        Here, you can create methods defined as "game state arguments" (see "args" property in states.inc.php).
-        These methods function is to return some additional information that is specific to the current
-        game state.
-    */
+    function onEndTurn($playerId, $score)
+    {
+        $this->notifyAllPlayers('endTurn', '', [
+            'score' => $score,
+            'playerId' => $playerId,
+            'preserve' => [ 'score', 'playerId' ],
+        ]);
+    }
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -465,41 +458,36 @@ class Bonsai extends Table
     {
         $bonsai = $this->loadGameState();
 
-        $previousPlayerId = $bonsai->getNextPlayerId();
-        $score = $bonsai->endTurn();
-
+        $bonsai->endTurn();
+        
         $this->saveGameState($bonsai);
         
-        $this->notifyAllPlayers('endTurn', '', [
-            'score' => $score,
-            'playerId' => $previousPlayerId,
-            'preserve' => [ 'score', 'playerId' ],
+    }
+
+    function onGameOver($scores, $remainingTiles, $faceDownCards)
+    {
+        // Update game stats
+        foreach ($remainingTiles as $playerId => $tileCount)
+            $this->setStat($tileCount, 'tiles_remaining', $playerId);
+
+        // Record the final scores in the database
+        foreach ($scores as $playerId => $score)
+            $this->setPlayerScore($playerId, $score['total']);
+
+        // Report the final scores to the players
+        $this->notifyAllPlayers('finalScore', '', [
+            'scores' => $scores,
+            'reveal' => $faceDownCards,
+            'preserve' => [ 'scores', 'reveal' ],
         ]);
 
-        if ($bonsai->getGameProgression() >= 100)
-        {
-            // Update game stats
-            foreach ($bonsai->getRemainingTileCounts() as $playerId => $tileCount)
-                $this->setStat($tileCount, 'tiles_remaining', $playerId);
+        $this->gamestate->nextState('gameOver');
+    }
 
-            // Record the final scores in the database
-            $scores = $bonsai->getScores();
-            foreach ($scores as $playerId => $score)
-                $this->setPlayerScore($playerId, $score['total']);
-
-            // Report the final scores to the players
-            $this->notifyAllPlayers('finalScore', '', [
-                'scores' => $scores,
-                'reveal' => $bonsai->getFaceDownCards(),
-                'preserve' => [ 'scores', 'reveal' ],
-            ]);
-
-            $this->gamestate->nextState('gameOver');
-            return;
-        }
-
-        $this->giveExtraTime($this->getCurrentPlayerId());
-        $this->activeNextPlayer();
+    function onChangeNextPlayer($playerId)
+    {
+        $this->giveExtraTime($playerId);
+        $this->gamestate->changeActivePlayer($playerId);
         $this->gamestate->nextState('nextTurn');
     }
 

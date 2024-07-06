@@ -2,7 +2,7 @@
 // © Copyright 2024, Philip Davis (mrphilipadavis AT gmail)
 
 require_once('BonsaiMats.php');
-require_once('EventEmitter.php');
+require_once('BonsaiEvents.php');
 
 // These colour indices correspond to the gameinfos->player_color field
 define('BON_PLAYER_GREY', 0);
@@ -18,18 +18,21 @@ define('DIR_LEFT', 4);
 define('DIR_TOP_LEFT', 5);
 
 
-class BonsaiLogic extends EventEmitter
+class BonsaiLogic
 {
     private $data;
+    private BonsaiEvents $events;
 
-    private function __construct($data)
+
+    private function __construct($data, BonsaiEvents $events = null)
     {
         $this->data = $data;
+        $this->events = $events;
     }
 
-    static function fromJson($json)
+    static function fromJson($json, BonsaiEvents $events)
     {
-        return new BonsaiLogic(json_decode($json));
+        return new BonsaiLogic(json_decode($json), $events);
     }
 
 
@@ -37,7 +40,7 @@ class BonsaiLogic extends EventEmitter
     // Setup Methods
     //
 
-    static function newGame($playerColors, $options)
+    static function newGame($playerColors, $options, BonsaiEvents $events)
     {
         // Note: $playerColors is Record<PlayerId, ColorIndex>
 
@@ -92,7 +95,7 @@ class BonsaiLogic extends EventEmitter
             'goalTiles' => $goalTiles,
             'finalTurns' => null, // Once draw pile is exhausted, this counts down from <# of players> to 0
             'move' => 1,
-        ]);
+        ], $events);
     }
 
     static function setupStepC($players, $useGoalTiles, &$goalTiles)
@@ -244,12 +247,10 @@ class BonsaiLogic extends EventEmitter
             
             // TODO: Remove the tile
 
-            $this->emit('tileRemoved', [
-                'playerId' => $playerId,
-                'x' => $x,
-                'y' => $y,
-                'score' => $this->getPlayerScore($playerId)['total'],
-            ]);
+            $tileTypeId = 0; // TODO
+
+            $score = $this->getPlayerScore($playerId)['total'];
+            $this->events->onTileRemoved($playerId, $tileTypeId, $x, $y, $score);
         }
     }
 
@@ -291,11 +292,8 @@ class BonsaiLogic extends EventEmitter
 
         if (count($placeTiles))
         {
-            $this->emit('tilesAdded', [
-                'playerId' => $playerId,
-                'placeTiles' => $placeTiles,
-                'score' => $this->getPlayerScore($playerId)['total'],
-            ]);
+            $score = $this->getPlayerScore($playerId)['total'];
+            $this->events->onTilesAdded($playerId, $placeTiles, $score);
         }
     }
 
@@ -318,10 +316,7 @@ class BonsaiLogic extends EventEmitter
             // Mark the goal as renounced
             $this->data->players->$playerId->renounced[] = $goalId;
 
-            $this->emit('goalRenounced', [
-                'playerId' => $playerId,
-                'goalId' => $goalId,
-            ]);
+            $this->events->onGoalRenounced($playerId, $goalId);
         }
     }
 
@@ -353,11 +348,8 @@ class BonsaiLogic extends EventEmitter
             $this->data->players->$playerId->claimed[] = $goalId;
             $this->data->goalTiles = array_values(array_filter($this->data->goalTiles, fn($g) => $g != $goalId));
 
-            $this->emit('goalClaimed', [
-                'playerId' => $playerId,
-                'goalId' => $goalId,
-                'score' => $this->getPlayerScore($playerId)['total'],
-            ]);
+            $score = $this->getPlayerScore($playerId)['total'];
+            $this->events->onGoalClaimed($playerId, $goalId, $score);
         }
 
         // Now that goals have been renounced (earlier) and claimed here,
@@ -421,13 +413,13 @@ class BonsaiLogic extends EventEmitter
         //
         // Give the card to the player
         //
-        $this->emit('cardTaken', [ $playerId, $drawCardId ]);
+        $this->events->onCardTaken($playerId, $drawCardId);
         switch ($card->type)
         {
             case CARDTYPE_TOOL:
                 $this->data->players->$playerId->faceUp[] = $drawCardId;
                 $this->data->players->$playerId->capacity += $card->capacity;
-                $this->emit('capacityIncreased', [ $playerId, $card->capacity ]);
+                $this->events->onCapacityIncreased($playerId, $card->capacity);
                 break;
                 
             case CARDTYPE_GROWTH:
@@ -437,7 +429,6 @@ class BonsaiLogic extends EventEmitter
                     $tileType = BonsaiMats::$TileTypes[$tileTypeId];
                     $tileTypeName = $tileType['name'];
                     $this->data->players->$playerId->canPlay->$tileTypeName++;
-                    // TODO: emit?
                 }
                 break;
 
@@ -461,7 +452,7 @@ class BonsaiLogic extends EventEmitter
                     $this->data->players->$playerId->inventory->$tileTypeName++;
                     $masterTilesReceived[] = $tileTypeId;
                 }
-                $this->emit('tilesReceived', [ $playerId, $masterTilesReceived, $index ]);
+                $this->events->onTilesReceived($playerId, $masterTilesReceived, $index);
                 break;
 
             case CARDTYPE_HELPER:
@@ -505,7 +496,7 @@ class BonsaiLogic extends EventEmitter
             $this->data->players->$playerId->inventory->$tileTypeName++;
         }
         if (count($tileTypes))
-            $this->emit('tilesReceived', [ $playerId, $tileTypes, $index ]);
+            $this->events->onTilesReceived($playerId, $tileTypes, $index);
 
         $this->data->board[$index] = null;
     }
@@ -519,28 +510,13 @@ class BonsaiLogic extends EventEmitter
         if ($index === false || $index > 3)
             throw new Exception('Invalid board state');
         array_splice($this->data->board, $index, 1);
+
+        $nextCardId = null;
         if (count($this->data->drawPile))
-        {
             $nextCardId = array_shift($this->data->drawPile);
-            array_unshift($this->data->board, $nextCardId);
 
-            $this->emit('cardRevealed', [ $nextCardId ]);
-        }
-        else {
-            array_unshift($this->data->board, null);
-
-            $this->emit('cardRevealed', [ null ]);
-        }
-    
-        //
-        // Check for game-ending condition
-        // Allow one more turn for each player if there are no new cards to draw
-        //
-        if (count($this->data->drawPile) === 0 && $this->data->finalTurns === null)
-        {
-            $this->data->finalTurns = count($this->data->order);
-            $this->emit('lastRound');
-        }
+        array_unshift($this->data->board, $nextCardId);
+        $this->events->onCardRevealed($nextCardId);
     }
 
     function discardTiles($discards)
@@ -562,7 +538,7 @@ class BonsaiLogic extends EventEmitter
                 throw new Exception('Failed to discard ' . $tileTypeName);
         }
 
-        $this->emit('tilesDiscarded', [ $playerId, $discards ]);
+        $this->events->onTilesDiscarded($playerId, $discards);
     }
 
 
@@ -589,11 +565,34 @@ class BonsaiLogic extends EventEmitter
         if ($this->data->finalTurns !== null)
             $this->data->finalTurns--;
 
-        $score = $this->getPlayerScore($this->getNextPlayerId())['total'];
+        $playerId = $this->getNextPlayerId();
+        $score = $this->getPlayerScore($playerId)['total'];
+        $this->events->onEndTurn($playerId, $score);
+
         $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
         $this->data->move++;
 
-        return $score;
+        if ($this->data->finalTurns === 0)
+        {
+            $scores = $this->getScores();
+            $remainingTiles = $this->getRemainingTileCounts();
+            $faceDownCards = $this->getFaceDownCards();
+            $this->events->onGameOver($scores, $remainingTiles, $faceDownCards);
+            return;
+        }
+
+        $playerId = $this->getNextPlayerId();
+        $this->events->onChangeNextPlayer($playerId);
+        
+        //
+        // Check for game-ending condition
+        // Allow one more turn for each player if there are no new cards to draw
+        //
+        if (count($this->data->drawPile) === 0 && $this->data->finalTurns === null)
+        {
+            $this->data->finalTurns = count($this->data->order);
+            $this->events->onLastRound();
+        }
     }
 
     public function getNextPlayerId()
