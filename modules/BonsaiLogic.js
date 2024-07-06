@@ -329,7 +329,9 @@ define([
         }
 
         adjustPlayerCapacity(playerId, delta) {
-            this.data.players[playerId].capacity += delta;
+            const player = this.data.players[playerId];
+            player.capacity += delta;
+            return player.capacity;
         }
 
         adjustPlayerTurnCap(playerId, tileType, delta) {

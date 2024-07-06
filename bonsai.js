@@ -871,8 +871,8 @@ function (
         },
 
         adjustPlayerCapacity(playerId, delta) {
-            this.capacity[playerId].incValue(delta);
-            bonsai.adjustPlayerCapacity(playerId, delta);
+            const capacity = bonsai.adjustPlayerCapacity(playerId, delta);
+            this.capacity[playerId].setValue(capacity);
         },
 
         setPlayerCapacity(playerId, value) {
