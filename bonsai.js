@@ -846,7 +846,7 @@ function (
 
         adjustPlayerPlaced(playerId, tileType, delta) {
             const placed = this.placed[playerId];
-            placed[tileType].incValue(delta);
+            placed[tileType].setValue(placed[tileType].getValue() + delta);
 
             const element = document.getElementById(`bon_player-summary-stat-block-${playerId}-${TileTypeName[tileType]}`);
             if (placed[tileType].getValue() > 0) {

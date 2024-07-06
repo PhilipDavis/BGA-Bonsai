@@ -542,7 +542,9 @@ class ClaimGoalAction extends Action {
         bonsai.claimGoal(this.playerId, this.goalId);
         gameui.updateGoalTooltips();
 
-        gameui.scoreCounter[this.playerId].incValue(points);
+        // TODO: get score from bonsai
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(counter.getValue() + points);
 
         if (this.playerId == gameui.myPlayerId) {
             const setDiv = document.getElementById(`bon_goal-set-${type}`);
@@ -558,7 +560,9 @@ class ClaimGoalAction extends Action {
         gameui.updateGoalTooltips();
 
         const { type, points } = Goals[this.goalId];
-        gameui.scoreCounter[this.playerId].incValue(-points);
+        // TODO: get score from bonsai
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(counter.getValue() - points);
 
         if (this.playerId == gameui.myPlayerId) {
             const setDiv = document.getElementById(`bon_goal-set-${type}`);
