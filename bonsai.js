@@ -973,7 +973,9 @@ function (
                 const cardId = bonsai.board[i - 1];
                 bonsai.board[i] = cardId;
                 bonsai.board[i - 1] = null;
-                promises.push(this.animateCardToNextSlotAsync(100 * (slot - i), i, cardId));
+                if (cardId) {
+                    promises.push(this.animateCardToNextSlotAsync(100 * (slot - i), i, cardId));
+                }
             }
 
             bonsai.board[0] = nextCardId;
