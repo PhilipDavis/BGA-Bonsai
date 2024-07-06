@@ -555,33 +555,25 @@ function (
         },
 
         //
-        // Determine the minimum rectangle that contains the entire tree
-        // Note: we can't do this on the tree container element directly
-        // because the pot and tiles have absolute positioning.
+        // Determine the game coordinates that contain the entire tree.
+        // This is used for positioning the tree within the play area.
         //
-        calculateBoundingRect(playerId) {
-            let minX = Number.MAX_SAFE_INTEGER;
-            let minY = Number.MAX_SAFE_INTEGER;
-            let maxX = 0;
-            let maxY = 0;
-
-            const treeDiv = document.getElementById(`bon_tree-${playerId}`);
-            for (const childDiv of treeDiv.children) {
-                const rect = childDiv.getBoundingClientRect();
-                if (!rect) continue;
-                const { x, y, width, height } = rect;
-                minX = Math.min(minX, x);
-                minY = Math.min(minY, y);
-                maxX = Math.max(maxX, x + width - 1);
-                maxY = Math.max(maxY, y + height - 1);
+        calculateBoundingCoords(playerId) {
+            let x1 = -1.5; // Left side of pot
+            let y1 = 0; // Bottom of the bud (the first wood tile)
+            let x2 = 2.5; // Right side of pot
+            let y2 = 0; // Top of pot
+            
+            const { played } = bonsai.players[playerId];
+            for (let [ , x, y ] of played) {
+                if (y % 2) x -= 0.5; // Adjust for hex grid offsetting of alternating rows
+                x1 = Math.min(x1, x);
+                y1 = Math.min(y1, y);
+                x2 = Math.max(x2, x);
+                y2 = Math.max(y2, y);
             }
 
-            return {
-                x: Math.floor(minX),
-                y: Math.floor(minY),
-                width: Math.ceil(maxX - minX + 1),
-                height: Math.ceil(maxY - minY + 1),
-            };
+            return { x1, y1, x2, y2, y1Pot: -1 };
         },
 
         async adjustTreeSizeAndPosAsync(playerId) {
@@ -590,59 +582,72 @@ function (
             const hostDiv = document.getElementById(`bon_tree-host-${playerId}`);
             if (!hostDiv) return;
 
-            const aTileDiv = hostDiv.querySelector('.bon_tile');
-            if (!aTileDiv) {
-                // The game just started if there are no tiles,
-                // so we don't need to reposition the tree.
-                return;
-            }
+            //
+            // Create a temporary invisible container and tile to
+            // measure the reference size of a tile.
+            //
+            const hiddenDiv = document.createElement('div');
+            hiddenDiv.classList.add('bon_hidden');
+            hostDiv.appendChild(hiddenDiv);
+
+            const referenceTileDiv = this.createTile(playerId, TileType.Wood, hiddenDiv);
+            const tileRect = referenceTileDiv.getBoundingClientRect();
+            const tileWidth = Math.round(tileRect.width);
+            const tileHeight = Math.round(tileRect.height);
+            const hPadding = 2 * tileWidth;
+            const vPadding = 2 * tileHeight * .667;
+
+            // Remove the temporary container and reference tile
+            hostDiv.removeChild(hiddenDiv);
 
             const rect = hostDiv.getBoundingClientRect();
 
-            const { x, y, width, height } = this.calculateBoundingRect(playerId);
+            const { x1, y1, x2, y2, y1Pot } = this.calculateBoundingCoords(playerId);
+            const width = (x2 - x1 + 1) * tileWidth;
+            const paddedWidth = width + hPadding;
 
-            // Make the minimum height of the space for the tree equal
-            // to twice the height of the pot.
-            const potDiv = hostDiv.querySelector('.bon_pot');
-            const potRect = potDiv.getBoundingClientRect();
-            const minHeight = Math.ceil(potRect.height * 2);
-            const extentBelowPot = Math.max(0, (y + height - 1) - (potRect.y + potRect.height - 1));
+            const aboveTableRows = y2 - Math.max(y1, y1Pot) + 1;
+            const aboveTableHeight = (aboveTableRows - 1) * tileHeight * .667 + tileHeight;
 
-            //console.log(x, y, width, height); // KILL
+            const belowTableRows = Math.max(y1, y1Pot) - y1;
+            const belowTableHeight = belowTableRows * tileHeight * .667;
 
-            if (height > rect.height) {
-                console.log('Growing height');
-                hostDiv.style.height = `${height}px`;
-            }
-            else if (height < rect.height && rect.height > minHeight) {
-                console.log('Shrinking height');
-                hostDiv.style.height = `${Math.max(minHeight, height)}px`;
-            }
+            const height = aboveTableHeight + belowTableHeight;
+            const paddedHeight = height + vPadding;
 
             const treeDiv = document.getElementById(`bon_tree-${playerId}`);
             await transitionStyleAsync(treeDiv, style => {
-                style.bottom = `${extentBelowPot}px`;
-
-// TODO: try a new strategy where we make a div be exactly the size
-// of the bounding box of the tree and allow the browser to center it
-
-                // Reposition the pot horizonally when the tree grows to within one tile-width of the sides
-
-                const tileWidth = Math.round(aTileDiv.getBoundingClientRect().width);
-                const x1 = x - tileWidth;
-                const x2 = x + width + tileWidth - 1;
-                const leftOverflow = Math.round(Math.max(0, rect.x - x1));
-                const rightOverflow = Math.round(Math.max(0, x2 - rect.right));
-                if (rightOverflow && !leftOverflow) { // TODO: instead of !leftOverflow, should check roomToShiftLeft
-                    // We're too close to the right edge; shift left
-                    style.left = `calc(50% - ${rightOverflow}px)`;
+                // Calculate the horizontal scale that fits the entire tree
+                // width in the container rectangle.
+                const scale = Math.min(1, rect.width / paddedWidth);
+                style.transform = `scale(${scale})`;
+    
+                const threshold = 3;
+                if (paddedHeight * scale - rect.height > threshold) {
+                    console.log(`Growing height to ${paddedHeight}px`);
+                    hostDiv.style.height = `${paddedHeight}px`;
                 }
-                else if (leftOverflow && !rightOverflow) {
+                else if (paddedHeight * scale - rect.height < threshold) {
+                    console.log(`Shrinking height to ${paddedHeight}px`);
+                    hostDiv.style.height = `${paddedHeight}px`;
+                }
+    
+                // Shift the pot upwards if the tree grows below the pot
+                style.bottom = `${belowTableHeight}px`;
+
+                // Shift to the left or the right as the tree grows
+                // past either edge of the playable area
+                const leftOverflow = Math.round(Math.max(0, -((x1 - 0.5) * tileWidth - hPadding / 2) - rect.width / 2) * scale);
+                const rightOverflow = Math.round(Math.max(0, x2 * tileWidth + hPadding / 2 - rect.width / 2) * scale);
+
+                if (leftOverflow) {
                     style.left = `calc(50% + ${leftOverflow}px)`;
                 }
-                else if (leftOverflow && rightOverflow) {
-                    style.left = `50%`;
-                    // TODO: scale the image down to fit exactly (minus the one-tile padding)
+                else if (rightOverflow) {
+                    style.left = `calc(50% - ${rightOverflow}px)`;
+                }
+                else {
+                    style.left = `calc(50%)`;
                 }
             });
         },
