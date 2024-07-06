@@ -811,8 +811,8 @@ class BonsaiLogic extends EventEmitter
 
             case GOALTYPE_FLOWER:
                 // Check the number of flower tiles beyond the pot edges (on the same side)
-                $rightSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === 1);
-                $leftSide = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === -1);
+                $rightSide = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === 1));
+                $leftSide = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER && BonsaiLogic::getProtrudingDirection($move) === -1));
                 $count = max($leftSide, $rightSide);
                 // Note: Flower is allowed to be below the pot
                 break;
