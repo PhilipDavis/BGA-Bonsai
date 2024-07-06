@@ -682,10 +682,13 @@ function (
             }
 
             if (bonsai.isLastTurn) {
-                const pageTitleDiv = document.getElementById('page-title');
-                pageTitleDiv.insertAdjacentHTML('beforeend', '<div id="bon_last-turn"></div>');
-                const lastTurnDiv = document.getElementById('bon_last-turn');
-                lastTurnDiv.innerText = _('This is your last turn!');
+                let lastTurnDiv = document.getElementById('bon_last-turn');
+                if (!lastTurnDiv) {
+                    const pageTitleDiv = document.getElementById('page-title');
+                    pageTitleDiv.insertAdjacentHTML('beforeend', '<div id="bon_last-turn"></div>');
+                    lastTurnDiv = document.getElementById('bon_last-turn');
+                    lastTurnDiv.innerText = _('This is your last turn!');
+                }
             }
         },
 
@@ -1675,6 +1678,9 @@ function (
 
         async notify_lastRound() {
             bonsai.data.finalTurns = bonsai.data.order.length;
+
+            // Just to trigger a refresh of the action bar
+            this.restoreServerGameState();
         },
 
         async notify_tilesDiscarded({ playerId, tileType: tileTypes }) {
