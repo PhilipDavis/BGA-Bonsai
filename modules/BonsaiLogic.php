@@ -944,6 +944,88 @@ class BonsaiLogic extends EventEmitter
         return $counts;
     }
 
+    public function playZombieTurn()
+    {
+        $playerId = $this->getNextPlayerId();
+        $player = $this->data->players->$playerId;
+
+        // Coin toss between taking a card or placing tiles
+        if (random_int(0, 1))
+        {
+            // Draw a card
+            $cards = array_values(array_filter($this->data->board, fn($cardId) => $cardId !== null));
+            shuffle($cards);
+            $cardId = array_pop($cards);
+
+            $woodOrLeaf = 0;
+            $slot = array_search($cardId, $this->data->board);
+            if ($slot === 1)
+                $woodOrLeaf = random_int(TILETYPE_WOOD, TILETYPE_LEAF);
+
+            $masterTile = 0; // Selection of the Wild resource
+            $card = BonsaiMats::$Cards[$cardId];
+            if ($card->type === CARDTYPE_MASTER)
+            {
+                if (array_search(TILETYPE_WILD, $card->resources) !== false)
+                    $masterTile = random_int(TILETYPE_WOOD, TILETYPE_FRUIT);
+            }
+            else if ($card->type === CARDTYPE_HELPER)
+            {
+                // Don't bother placing tiles... just pass and discard, if necessary
+            }
+
+            $claimGoals = [];
+            $renounceGoals = [];
+            foreach ($this->data->goalTiles as $goalId)
+            {
+                if ($this->doesPlayerQualifyForGoal($playerId, $goalId))
+                    $renounceGoals[] = $goalId;
+            }
+
+            // Randomly select tiles to discard.
+            // Could make this better by just keeping an array of inventory
+            // rather than an object of counts by tile type
+            $i = 0;
+            $discardTiles = [];
+            $mustDiscardCount = $this->getMustDiscardCount();
+            $inventory = (object)[ ...(array)$player->inventory ];
+            while ($mustDiscardCount > 0)
+            {
+                $tileTypeId = random_int(TILETYPE_WOOD, TILETYPE_FRUIT);
+                $tileType = BonsaiMats::$TileTypes[$tileTypeId];
+                $tileTypeName = $tileType['name'];
+                if ($inventory->$tileTypeName > 0)
+                {
+                    $inventory->$tileTypeName--;
+                    $discardTiles[] = $tileTypeId;
+                    $mustDiscardCount--;
+                }
+                if ($i++ > 1000) throw new Exception('Failed to discard');
+            }
+    
+            $placeTiles = []; // Place nothing
+
+            $this->meditate($cardId, $woodOrLeaf, [ $masterTile ], $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
+        }
+        else
+        {
+            $removeTiles = [];
+
+            // Just pass instead of placing anything
+            $placeTiles = [];
+
+            $claimGoals = [];
+            $renounceGoals = [];
+            foreach ($this->data->goalTiles as $goalId)
+            {
+                if ($this->doesPlayerQualifyForGoal($playerId, $goalId))
+                    $renounceGoals[] = $goalId;
+            }
+
+            $this->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+        }
+    }
+
     //
     // Helper method for debugging errors in Production.
     // The bug state can be loaded into an active game

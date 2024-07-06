@@ -556,12 +556,11 @@ class Bonsai extends Table
 //////////// Zombie
 ////////////
 
-    function zombieTurn($state, $active_player)
+    function zombieTurn($state, $activePlayerId)
     {
     	$stateName = $state['name'];
 
-        // TODO: note, for now there is no zombie mode
-//        if ($state['type'] !== "activeplayer")
+        if ($state['type'] !== "activeplayer")
             throw new feException("Zombie mode not supported at this game state: " . $stateName); // NOI18N
 
 
@@ -569,22 +568,13 @@ class Bonsai extends Table
     	
         switch ($stateName) {
             case PLAYER_TURN:
-                // Coin toss between taking a card or placing tiles
-                if (random_int(0, 1))
-                {
-                    // TODO: draw a card... but what about the choices?...
-                }
-                else
-                {
-                    // Randomly choose a legal tile placement
-                    /* TODO: implement legal move logic on server side
-                    $legalMoves = $bonsai->getLegalMoves();
-                    shuffle($legalMoves);
-                    $move = array_pop($legalMoves);
-                    */
-                }
+                $bonsai->playZombieTurn();
                 break;
         }
+
+        $this->saveGameState($bonsai);
+
+        $this->gamestate->nextState('endTurn');
     }
     
 
