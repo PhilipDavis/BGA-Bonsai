@@ -401,6 +401,7 @@
     bottom: 0;
     left: 50%;
     transform: translate(-50%, 0px);
+    transform-origin: bottom center;
     transition: bottom .2s ease-out, left .2s ease-out;
 }
 
