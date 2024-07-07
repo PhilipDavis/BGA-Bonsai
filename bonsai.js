@@ -23,7 +23,7 @@ function (
     declare,
     { install, formatBlock, __, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
     { delayAsync, transitionStyleAsync, WorkflowManager, ActionStack, SetClientState, UndoLastAction, reflow },
-    { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalType, GoalSize, GoalStatus, TileType, TileTypeName, Direction },
+    { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalStatus, TileType, TileTypeName, SoloPointsRequired },
     { PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction },
 ) {
     const BgaGameId = 'bonsai';
@@ -123,6 +123,10 @@ function (
             }
             
             this.updateDeck();
+
+            if (Object.keys(bonsai.players).length === 1) {
+                this.createSoloPanel(bonsai.players[this.myPlayerId]);
+            }
 
             // TODO: allow player to flip their pot? (maybe only at the start...?)
             // TODO: game preference to sort Seishi cards by type or not
@@ -250,6 +254,61 @@ function (
                         }
                     }
                 }
+            }
+        },
+
+        createSoloPanel() {
+            createFromTemplate('bonsai_Templates.soloObjectivesPanel', {}, 'bon_goals', { placement: 'afterbegin' });
+
+            const msg = stringFromTemplate(_('Score at least ${N} points'), { N: SoloPointsRequired[bonsai.options.solo] });
+            createFromTemplate('bonsai_Templates.soloObjective', {
+                DIV_ID: 'bon_solo-obj-points',
+                TEXT: msg,
+            }, 'bon_solo-panel');
+
+            createFromTemplate('bonsai_Templates.soloObjective', {
+                DIV_ID: 'bon_solo-obj-goal1',
+                TEXT: _('Claim 1st goal'),
+            }, 'bon_solo-panel');
+
+            createFromTemplate('bonsai_Templates.soloObjective', {
+                DIV_ID: 'bon_solo-obj-goal2',
+                TEXT: _('Claim 2nd goal'),
+            }, 'bon_solo-panel');
+
+            createFromTemplate('bonsai_Templates.soloObjective', {
+                DIV_ID: 'bon_solo-obj-goal3',
+                TEXT: _('Claim 3rd goal'),
+            }, 'bon_solo-panel');
+
+            this.updateSoloPanel();
+        },
+
+        updateSoloPanel() {
+            if (!bonsai.isSolo) return;
+            const playerId = bonsai.data.order[0];
+            const player = bonsai.players[playerId];
+
+            this.updateSoloObjective('bon_solo-obj-points', bonsai.getPlayerScore(playerId) >= SoloPointsRequired[bonsai.options.solo]);
+
+            for (let i = 0; i < 3; i++) {
+                this.updateSoloObjective(`bon_solo-obj-goal${i + 1}`, player.claimed.length > i);
+            }
+        },
+
+        updateSoloObjective(objDivId, met) {
+            const objDiv = document.getElementById(objDivId);
+            if (!objDiv) return;
+            const statusDiv = objDiv.querySelector('.bon_solo-obj-status');
+            if (met) {
+                objDiv.classList.add('bon_solo-obj-met');
+                statusDiv.classList.remove('fa-angle-double-right');
+                statusDiv.classList.add('fa-check');
+            }
+            else {
+                objDiv.classList.remove('bon_solo-obj-met');
+                statusDiv.classList.remove('fa-check');
+                statusDiv.classList.add('fa-angle-double-right');
             }
         },
 
@@ -963,6 +1022,22 @@ function (
             this.placeInElement(divId, destDivId);
         },
 
+        async animateDiscardCardAsync(cardId) {
+            const divId = `bon_card-${cardId}`;
+            const div = document.getElementById(divId);
+
+            await div.animate({
+                top: [ 0, '-100%' ],
+                opacity: [ 1, 0 ],
+            }, {
+                duration: 400,
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
+
+            div.parentElement.removeChild(div);
+        },
+
         async animateCardReplacementAsync(nextCardId) {
             const promises = [];
 
@@ -1046,7 +1121,6 @@ function (
             const runningTotals = {};
             for (const playerId of Object.keys(scores)) {
                 runningTotals[playerId] = 0;
-                this.scoreCounter[playerId].setValue(0);
             }
             // Delay to allow score counters to set to 0
             await delayAsync(100);
@@ -1613,6 +1687,7 @@ function (
             
             // Update player score
             this.scoreCounter[playerId].setValue(score);
+            this.updateSoloPanel();
         },
 
         async notify_tilesAdded({ playerId, tiles, score }) {
@@ -1627,6 +1702,7 @@ function (
 
             // Update player score
             this.scoreCounter[playerId].setValue(score);
+            this.updateSoloPanel();
         },
 
         async notify_tilesReceived({ playerId, tileType: tileTypes, slot }) {
@@ -1648,6 +1724,7 @@ function (
 
             // Update player score
             this.scoreCounter[playerId].setValue(score);
+            this.updateSoloPanel();
         },
 
         async notify_cardTaken({ playerId, cardId }) {
@@ -1710,10 +1787,16 @@ function (
             }
         },
 
+        async notify_cardDiscarded({ cardId }) {
+            const slot = bonsai.discardCard(cardId);
+            await this.animateDiscardCardAsync(cardId, slot);
+        },
+
         async notify_endTurn({ playerId, score }) {
             bonsai.endTurn();
             this.resetClientStateArgs();
             this.scoreCounter[playerId].setValue(score);
+            this.updateSoloPanel();
         },
 
         async notify_finalScore({ scores, reveal }) {

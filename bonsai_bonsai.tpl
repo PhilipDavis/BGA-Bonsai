@@ -187,6 +187,16 @@ const bonsai_Templates = {
     goalLog:
         '<div id="${_UNIQUEID}" class="bon_log-goal bon_goal-${DATA}"></div>',
 
+    soloObjectivesPanel:
+        '<div id="bon_solo-panel">' +
+        '</div>',
+
+    soloObjective:
+        '<div id="${DIV_ID}" class="bon_solo-obj">' +
+            '<span class="bon_solo-obj-status fa fa-md fa-angle-double-right"></span>' +
+            '<span class="bon_solo-obj-text">${TEXT}</span>' +
+        '</div>',
+
     finalScores:
         '<div id="bon_final-scores">' +
             '<div id="bon_final-scores-table">' +

@@ -4,6 +4,8 @@
 require_once('BonsaiMats.php');
 require_once('BonsaiEvents.php');
 
+define('BON_DATA_VERSION', 2); // Increment when the JSON data structure changes
+
 // These colour indices correspond to the gameinfos->player_color field
 define('BON_PLAYER_GREY', 0);
 define('BON_PLAYER_RED', 1);
@@ -32,7 +34,45 @@ class BonsaiLogic
 
     static function fromJson($json, BonsaiEvents $events)
     {
-        return new BonsaiLogic(json_decode($json), $events);
+        $data = BonsaiLogic::parseJson($json);
+        return new BonsaiLogic($data, $events);
+    }
+
+    static function parseJson($json)
+    {
+        $data = json_decode($json);
+
+        $version = 1;
+        if (isset($data->version))
+            $version = $data->version;
+        else if (isset($data->v))
+            $version = $data->v;
+            
+        if ($version < 2)
+        {
+            unset($data->version);
+            
+            // Start the move number from an invalid value
+            // so that I don't mistake an upgraded game
+            // to have a valid value.
+            $data->move = -100;
+
+            // Shorten name of Tokonoma Variant option
+            $data->options->tokonoma = $data->options->tokonomaVariant;
+            unset($data->options->tokonomaVariant);
+
+            // Shorten name of Goal Tiles Enabled option
+            $data->options->goals = $data->options->goalTiles;
+            unset($data->options->goalTiles);
+
+            $version = 2;
+        }
+
+        if ($version < BON_DATA_VERSION)
+            throw new Exception('Data upgrade not implemented');
+
+        $data->version = BON_DATA_VERSION;
+        return $data;
     }
 
 
@@ -46,6 +86,9 @@ class BonsaiLogic
 
         $playerIds = array_keys($playerColors);
         $playerCount = count($playerColors);
+
+        if ($playerCount === 1)
+            $options['goals'] = true;
 
         // Set up each player with their color and starting tiles
         $players = (object)[];
@@ -78,14 +121,14 @@ class BonsaiLogic
 
         // Step A: Place board in middle of the table
         // Step B: Place bonsai tiles within reach of all players
-        BonsaiLogic::setupStepC($players, $options['goalTiles'], $goalTiles);
-        BonsaiLogic::setupStepD($players, $options['tokonomaVariant'], $drawPile, $board);
+        BonsaiLogic::setupStepC($players, $options['goals'], $goalTiles);
+        BonsaiLogic::setupStepD($players, $options['tokonoma'], $drawPile, $board);
         BonsaiLogic::setupStepE($players);
         BonsaiLogic::setupStepF($playerIds, $players);
         // Step G: Keep the Scoring Pad handy
 
         return new BonsaiLogic((object)[
-            'v' => 1, // Only need to increment for breaking changes after beta release
+            'v' => BON_DATA_VERSION,
             'options' => (array)$options,
             'order' => $playerIds,
             'nextPlayer' => 0,
@@ -143,7 +186,7 @@ class BonsaiLogic
         // cards and place them face up in the spaces of the board.
 
         $playerCount = count((array)$players);
-        $cards = array_keys(array_filter(BonsaiMats::$Cards, fn($card) => $playerCount > $card->minPlayers));
+        $cards = array_keys(array_filter(BonsaiMats::$Cards, fn($card) => $playerCount >= $card->minPlayers));
 
         shuffle($cards);
 
@@ -203,12 +246,14 @@ class BonsaiLogic
         // 3rd - 1 wood, 1 leaf, 1 flower
         // 4th - 1 wood, 1 leaf, 1 flower, 1 fruit
 
+        // In Solo mode, the player starts with 1 wood and 1 leaf
+
         for ($i = 0; $i < count($playerIds); $i++)
         {
             $playerId = $playerIds[$i];
             $player = $players->$playerId;
             $player->inventory->wood++;
-            if ($i >= 1) $player->inventory->leaf++;
+            if ($i >= 1 || count($playerIds) === 1) $player->inventory->leaf++;
             if ($i >= 2) $player->inventory->flower++;
             if ($i >= 3) $player->inventory->fruit++;
         }
@@ -228,6 +273,12 @@ class BonsaiLogic
         $this->placeTiles($placeTiles, $player->canPlay);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
+
+        if ($this->isSolo())
+        {
+            $this->discardCard(3);
+            $this->revealCard();
+        }
     }
 
     function removeTiles($removeTiles)
@@ -386,16 +437,36 @@ class BonsaiLogic
 
     function meditate($drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
     {
+        $index = 0;
         $canPlay = (object)[];
-        $this->drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, $canPlay);
+        $this->drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, $canPlay, $index);
         $this->placeTiles($placeTiles, $canPlay);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
         $this->discardTiles($discardTiles);
+
+        if ($this->isSolo())
+        {
+            // Discard the card to the left of the selected card.
+            if ($index > 0)
+            {
+                while ($index > 0 && $this->data->board[--$index] == null);
+                $this->discardCard($index);
+                $this->revealCard();
+            }
+            else
+            {
+                // If the left-most slot, reveal the next card
+                // from the deck and discard it.
+                $this->revealCard();
+                $this->discardCard(0);
+            }
+        }
+
         $this->revealCard();
     }
 
-    function drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, object &$canPlay)
+    function drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, object &$canPlay, int &$index)
     {
         $playerId = $this->getNextPlayerId();
 
@@ -514,6 +585,20 @@ class BonsaiLogic
         $this->data->board[$index] = null;
     }
 
+    function discardCard($slot)
+    {
+        // For the solo game
+
+        // Does the slot contain a card?
+        $cardId = $this->data->board[$slot];
+        if ($cardId === null)
+            throw new Exception('Slot is empty');
+
+        $this->events->onCardDiscarded($cardId);
+
+        $this->data->board[$slot] = null;
+    }
+
     public function revealCard()
     {
         //
@@ -583,15 +668,15 @@ class BonsaiLogic
         $this->events->onEndTurn($playerId, $score);
 
         $this->data->nextPlayer = ($this->data->nextPlayer + 1) % count($this->data->order);
-        if (isset($this->data->move))
-            $this->data->move++;
+        $this->data->move++;
 
         if ($this->data->finalTurns === 0)
         {
             $scores = $this->getScores();
             $remainingTiles = $this->getRemainingTileCounts();
             $faceDownCards = $this->getFaceDownCards();
-            $this->events->onGameOver($scores, $remainingTiles, $faceDownCards);
+            $wonSoloGame = $this->wonSoloGame();
+            $this->events->onGameOver($scores, $remainingTiles, $faceDownCards, $wonSoloGame);
             return;
         }
 
@@ -618,7 +703,7 @@ class BonsaiLogic
     {
         // Determine how many cards this game started with and how many are remaining in the draw pile
         $playerCount = count($this->data->order);
-        $cards = array_keys(array_filter(BonsaiMats::$Cards, fn($card) => $playerCount > $card->minPlayers));
+        $cards = array_keys(array_filter(BonsaiMats::$Cards, fn($card) => $playerCount >= $card->minPlayers));
         $startingCardCount = count($cards) - 4; // Four are revealed already
         $currentCardCount = count($this->data->drawPile);
 
@@ -907,7 +992,7 @@ class BonsaiLogic
         // Score the parchment cards
         //
         $parchmentScore = 0;
-        if ($final)
+        if ($final || $this->isSolo())
         {
             foreach ($parchmentCards as $cardId)
             {
@@ -949,7 +1034,7 @@ class BonsaiLogic
             'leaf' => $leafScore,
             'flower' => $flowerScore,
             'fruit' => $fruitScore,
-            'goal' => $this->data->options->goalTiles ? $goalScore : '-',
+            'goal' => $this->data->options->goals ? $goalScore : '-',
             'parchment' => $parchmentScore,
             'total' => $leafScore + $flowerScore + $fruitScore + $goalScore + $parchmentScore,
         ];
@@ -978,6 +1063,30 @@ class BonsaiLogic
             $counts[$playerId] = $inventory->wood + $inventory->leaf + $inventory->flower + $inventory->fruit;
         }
         return $counts;
+    }
+
+    public function isSolo()
+    {
+        return count($this->data->order) === 1;
+    }
+
+    public function wonSoloGame()
+    {
+        if (!$this->isSolo()) return null;
+
+        $playerId = $this->getNextPlayerId();
+        $player = $this->data->players->$playerId;
+        if (count($player->claimed) < 3)
+            return false;
+
+        $pointsRequired = [
+            '1' => 80,
+            '2' => 100,
+            '3' => 120,
+            '4' => 140,
+        ][$this->data->options->solo];
+
+        return $this->getPlayerScore($playerId) >= $pointsRequired;
     }
 
     public function playZombieTurn()

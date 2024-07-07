@@ -94,14 +94,14 @@ define([
         { type: CardType.Helper, resources: [ ResourceType.Wild, ResourceType.Fruit ] },
 
         // 41
-        { type: CardType.Parchment, bonusType: 'tiles', resource: ResourceType.Wood, points: 1 },
-        { type: CardType.Parchment, bonusType: 'tiles', resource: ResourceType.Leaf, points: 1 },
-        { type: CardType.Parchment, bonusType: 'tiles', resource: ResourceType.Flower, points: 2 },
-        { type: CardType.Parchment, bonusType: 'tiles', resource: ResourceType.Fruit, points: 2 },
+        { type: CardType.Parchment, bonusType: 'tiles', bonus: ResourceType.Wood, points: 1 },
+        { type: CardType.Parchment, bonusType: 'tiles', bonus: ResourceType.Leaf, points: 1 },
+        { type: CardType.Parchment, bonusType: 'tiles', bonus: ResourceType.Flower, points: 2 },
+        { type: CardType.Parchment, bonusType: 'tiles', bonus: ResourceType.Fruit, points: 2 },
 
-        { type: CardType.Parchment, bonusType: 'cards', card: CardType.Growth, points: 2 },
-        { type: CardType.Parchment, bonusType: 'cards', card: CardType.Helper, points: 2 },
-        { type: CardType.Parchment, bonusType: 'cards', card: CardType.Master, points: 2 },
+        { type: CardType.Parchment, bonusType: 'cards', bonus: CardType.Growth, points: 2 },
+        { type: CardType.Parchment, bonusType: 'cards', bonus: CardType.Helper, points: 2 },
+        { type: CardType.Parchment, bonusType: 'cards', bonus: CardType.Master, points: 2 },
     ];
 
     const GoalType = {
@@ -228,7 +228,14 @@ define([
         },
     };
 
-    
+    const SoloPointsRequired = {
+        1: 80,
+        2: 100,
+        3: 120,
+        4: 140,
+    };
+
+
     class BonsaiLogic {
         constructor(data, myPlayerId) {
             this.myPlayerId = myPlayerId;
@@ -253,7 +260,8 @@ define([
         placeTile(playerId, type, x, y, r) {
             const tileId = `${playerId}-${x}-${y}`;
             this.trees[playerId].placeTile(type, x, y, r);
-            this.players[playerId].played.push([ type, x, y, r ]);
+            const player = this.players[playerId];
+            player.played.push([ type, x, y, r ]);
             this.placedThisTurn[type]++;
             return tileId;
         }
@@ -263,7 +271,8 @@ define([
             // Don't simply subtract because we also remove a tile during
             // a pruning operation which doesn't affect the turn caps.
             this.placedThisTurn[type] = Math.max(0, this.placedThisTurn[type] - 1);
-            this.players[playerId].played = this.players[playerId].played.filter(move => move[1] !== x || move[2] !== y);
+            const player = this.players[playerId];
+            player.played = player.played.filter(move => move[1] !== x || move[2] !== y);
         }
 
         takeCardFromSlot(playerId, slot) {
@@ -448,13 +457,16 @@ define([
         }
         
         claimGoal(playerId, goalId) {
-            this.data.players[playerId].claimed.push(goalId);
             this.data.goalTiles = this.data.goalTiles.filter(g => g !== goalId);
+
+            const player = this.data.players[playerId];
+            player.claimed.push(goalId);
         }
 
         unclaimGoal(playerId, goalId) {
             const player = this.data.players[playerId];
             player.claimed = player.claimed.filter(g => g !== goalId);
+
             this.data.goalTiles.push(goalId);
             this.data.goalTiles.sort();
         }
@@ -514,6 +526,22 @@ define([
             //
             // Does the player qualify for this goal?
             //
+            const short = this.calculatePlayerShortOfGoal(this.myPlayerId, goalId);
+
+            return {
+                goalId,
+                status: short ? GoalStatus.Ineligible : GoalStatus.Eligible,
+                short,
+            };
+        }
+
+        doesPlayerQualifyForGoal(playerId, goalId) {
+            return this.calculatePlayerShortOfGoal(playerId, goalId) === 0;
+        }
+
+        calculatePlayerShortOfGoal(playerId, goalId) {
+            const { played } = this.data.players[playerId];
+
             const { type, req, size } = Goals[goalId];
             let count = 0;
             switch (type) {
@@ -563,12 +591,7 @@ define([
                     }
                     break;
             }
-
-            return {
-                goalId,
-                status: count >= req ? GoalStatus.Eligible : GoalStatus.Ineligible,
-                short: Math.max(0, req - count),
-            };
+            return Math.max(0, req - count);
         }
 
         get eligibleGoals() {
@@ -638,8 +661,25 @@ define([
             return this.data.players;
         }
 
+        get isSolo() {
+            return this.data.order.length === 1;
+        }
+
+        get options() {
+            return this.data.options;
+        }
+
         playerTree(playerId) {
             return this.trees[playerId];
+        }
+
+        discardCard(cardId) {
+            const index = this.data.board.indexOf(cardId);
+            if (index < 0) {
+                throw new Error(`Card ${cardId} not found`);
+            }
+            this.data.board[index] = null;
+            return index;
         }
 
         reduceDrawPile() {
@@ -649,6 +689,142 @@ define([
 
         get isLastTurn() {
             return typeof this.data.finalTurns === 'number' && this.data.finalTurns > 0;
+        }
+
+        countAdjacentLeafs(leafMoves) {
+            let result = 0;
+            const visited = {};
+            const stack = [];
+            const leafKeys = leafMoves.map(move => makeKey(move[1], move[2]));
+            const tree = this.trees[this.myPlayerId];
+    
+            while (leafKeys.length) {
+                let leafKey = leafKeys.shift();
+                stack.push(leafKey);
+    
+                let count = 0;
+                while (stack.length) {
+                    leafKey = stack.pop();
+
+                    if (visited[leafKey]) continue;
+                    visited[leafKey] = true;
+                    count++;
+                    
+                    const adjacentKeys = Object.values(tree.getAdjacentKeys(leafKey));
+                    const adjacentLeafKeys = adjacentKeys.filter(key => leafKeys.includes(key));
+                    stack.push(...adjacentLeafKeys);
+                }
+                result = Math.max(result, count);
+            }
+    
+            return result;
+        }
+    
+        getFlowerScore(moves) {
+            const flowerMoves = moves.filter(move => move[0] == TileType.Flower);
+            const tree = this.trees[this.myPlayerId];
+    
+            // Create a lookup for tiles that exist in the tree
+            const filled = {};
+            for (const move of moves) {
+                const key = makeKey(move[1], move[2]);
+                filled[key] = true;
+            }
+    
+            // Test each flower move to see how many adjacent spaces are filled
+            let score = 0;
+            for (const move of flowerMoves) {
+                score += 6;
+                const key = makeKey(move[1], move[2]);
+                const adjacentKeys = Object.values(tree.getAdjacentKeys(key));
+                for (const adjKey of adjacentKeys) {
+                    if (filled[adjKey]) {
+                        score--;
+                    }
+                }
+            }
+    
+            return score;
+        }
+        
+        getPlayerScore(playerId) {
+            const player = this.data.players[playerId];
+    
+            const leafMoves = player.played.filter(move => move[0] == TileType.Leaf);
+            const flowerMoves = player.played.filter(move => move[0] == TileType.Flower);
+    
+            const woodTiles = player.played.filter(move => move[0] == TileType.Wood).length;
+            const leafTiles = leafMoves.length;
+            const flowerTiles = flowerMoves.length;
+            const fruitTiles = player.played.filter(move => move[0] == TileType.Fruit).length;
+    
+            // Face Up
+            const growthCards = player.faceUp.filter(cardId => Cards[cardId].type == CardType.Growth);
+    
+            // Face Down
+            const masterCards = player.faceDown.filter(cardId => Cards[cardId].type == CardType.Master);
+            const helperCards = player.faceDown.filter(cardId => Cards[cardId].type == CardType.Helper);
+            const parchmentCards = player.faceDown.filter(cardId => Cards[cardId].type == CardType.Parchment);
+    
+            // 3 Points per leaf
+            const leafScore = leafTiles * 3;
+    
+            // 1 Point per space adjacent to a flower
+            const flowerScore = this.getFlowerScore(player.played);
+    
+            // 7 Points per fruit
+            const fruitScore = fruitTiles * 7;
+    
+            // Calculate goals
+            let goalScore = 0;
+            for (const goalId of player.claimed) {
+                if (this.doesPlayerQualifyForGoal(this.myPlayerId, goalId)) {
+                    goalScore += Goals[goalId].points;
+                }
+            }
+    
+            //
+            // Score the parchment cards
+            //
+            let parchmentScore = 0;
+            if (this.isSolo || this.data.finalTurns === 0) {
+                for (const cardId of parchmentCards)
+                {
+                    const card = Cards[cardId];
+                    switch (card.bonus)
+                    {
+                        case TileType.Wood:
+                            parchmentScore += card.points * woodTiles;
+                            break;
+
+                        case TileType.Leaf:
+                            parchmentScore += card.points * leafTiles;
+                            break;
+                            
+                        case TileType.Flower:
+                            parchmentScore += card.points * flowerTiles;
+                            break;
+                            
+                        case TileType.Fruit:
+                            parchmentScore += card.points * fruitTiles;
+                            break;
+
+                        case CardType.Growth:
+                            parchmentScore += card.points * growthCards.length;
+                            break;
+                            
+                        case CardType.Master:
+                            parchmentScore += card.points * masterCards.length;
+                            break;
+                            
+                        case CardType.Helper:
+                            parchmentScore += card.points * helperCards.length;
+                            break;
+                    }
+                }
+            }
+
+            return leafScore + flowerScore + fruitScore + goalScore + parchmentScore;
         }
 
         countdownFinalTurns() {
@@ -682,5 +858,6 @@ define([
         TileTypeName,
         ResourceType,
         Direction,
+        SoloPointsRequired,
     };
 });
