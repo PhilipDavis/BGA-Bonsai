@@ -11,6 +11,12 @@
                 "tmdisplay": "All Parchment cards are placed in the first half of the deck"
             }
         },
+        "displaycondition": [
+            {
+                "type": "minplayers",
+                "value": 2
+            }
+        ],
         "default": "1"
     },
     "101": {
@@ -27,6 +33,43 @@
                 "firstgameonly": true
             }
         },
+        "displaycondition": [
+            {
+                "type": "minplayers",
+                "value": 2
+            }
+        ],
         "default": "1"
+    },
+    "102": {
+        "name": "Solo difficulty level",
+        "values": {
+            "1": {
+                "name": "Gakusei",
+                "description": "You must claim three goals and score a minimum of 80 points.",
+                "tmdisplay": "Low (80 pts)"
+            },
+            "2": {
+                "name": "Senmon",
+                "description": "You must claim three goals and score a minimum of 100 points.",
+                "tmdisplay": "Medium (100 pts)"
+            },
+            "3": {
+                "name": "Sensei",
+                "description": "You must claim three goals and score a minimum of 120 points.",
+                "tmdisplay": "High (120 pts)"
+            },
+            "4": {
+                "name": "Yúsha",
+                "description": "You must claim three goals and score a minimum of 140 points.",
+                "tmdisplay": "Extreme (140 pts)"
+            }
+        },
+        "displaycondition": [
+            {
+                "type": "maxplayers",
+                "value": 1
+            }
+        ]
     }
 }

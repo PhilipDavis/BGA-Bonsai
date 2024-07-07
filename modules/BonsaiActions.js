@@ -105,6 +105,9 @@ class PlaceTileAction extends Action {
 
         // Update the tool tips in case goal progressions changed
         gameui.updateGoalTooltips();
+        gameui.updateSoloPanel();
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
     }
 
     async undoAsync() {
@@ -182,6 +185,9 @@ class PlaceTileAction extends Action {
 
         // Update the tool tips in case goal progressions changed
         gameui.updateGoalTooltips();
+        gameui.updateSoloPanel();
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
     }
 
     isCheckpoint() {
@@ -268,6 +274,10 @@ class TakeCardAction extends Action {
         if (cardType === CardType.Tool) {
             gameui.adjustPlayerCapacity(this.playerId, 2);
         }
+        
+        gameui.updateSoloPanel();
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
     }
 
     async undoAsync() {
@@ -299,12 +309,13 @@ class TakeCardAction extends Action {
             const hostDivId = `bon_card-host-${this.cardId}`;
             const hostDiv = document.getElementById(hostDivId);
             hostDiv.parentElement.removeChild(hostDiv);
-
-            // TODO: fix up face down pile (empty/not)
-            // TODO: fix up face down pile tool tips
         })();
 
-       await cardPromise; // TODO: collapse
+        await cardPromise; // TODO: collapse
+
+        gameui.updateSoloPanel();
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
     }
 
     isCheckpoint() { return true; }
@@ -531,8 +542,6 @@ class ClaimGoalAction extends Action {
     }
 
     async doAsync() {
-        const { type, points } = Goals[this.goalId];
-
         const divId = `bon_goal-${this.goalId}`;
         const goalDiv = document.getElementById(divId);
         goalDiv.classList.remove('bon_selectable');
@@ -541,12 +550,13 @@ class ClaimGoalAction extends Action {
 
         bonsai.claimGoal(this.playerId, this.goalId);
         gameui.updateGoalTooltips();
+        gameui.updateSoloPanel();
 
-        // TODO: get score from bonsai
         const counter = gameui.scoreCounter[this.playerId];
-        counter.setValue(counter.getValue() + points);
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
 
         if (this.playerId == gameui.myPlayerId) {
+            const { type } = Goals[this.goalId];
             const setDiv = document.getElementById(`bon_goal-set-${type}`);
             setDiv.classList.add('bon_claimed');
         }
@@ -558,13 +568,13 @@ class ClaimGoalAction extends Action {
 
         bonsai.unclaimGoal(this.playerId, this.goalId);
         gameui.updateGoalTooltips();
+        gameui.updateSoloPanel();
 
-        const { type, points } = Goals[this.goalId];
-        // TODO: get score from bonsai
         const counter = gameui.scoreCounter[this.playerId];
-        counter.setValue(counter.getValue() - points);
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
 
         if (this.playerId == gameui.myPlayerId) {
+            const { type } = Goals[this.goalId];
             const setDiv = document.getElementById(`bon_goal-set-${type}`);
             setDiv.classList.remove('bon_claimed');
         }

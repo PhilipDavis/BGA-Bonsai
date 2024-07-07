@@ -21,6 +21,8 @@ define('OPT_GOALTILES', 'OPT_GOALTILES');
 define('OPT_GOALTILES_YES', 1);
 define('OPT_GOALTILES_NO', 2);
 
+define('OPT_SOLO_DIFFICULTY', 'OPT_SOLO_DIFFICULTY');
+
 
 class Bonsai extends Table implements BonsaiEvents
 {
@@ -40,6 +42,7 @@ class Bonsai extends Table implements BonsaiEvents
             // Game Options
             "OPT_RULES" => 100,
             "OPT_GOALTILES" => 101,
+            "OPT_SOLO_DIFFICULTY" => 102,
         ]);
 	}
 	
@@ -114,9 +117,12 @@ class Bonsai extends Table implements BonsaiEvents
 
 
         $gameOptions = [
-            'tokonomaVariant' => $this->getOption(OPT_RULES) == OPT_RULES_TOKONOMA,
-            'goalTiles' => $this->getOption(OPT_GOALTILES) == OPT_GOALTILES_YES,
+            'tokonoma' => $this->getOption(OPT_RULES) == OPT_RULES_TOKONOMA,
+            'goals' => $this->getOption(OPT_GOALTILES) == OPT_GOALTILES_YES,
         ];
+
+        if ($playerCount === 1)
+            $gameOptions['solo'] = intval($this->getOption(OPT_SOLO_DIFFICULTY));
 
         $bonsai = BonsaiLogic::newGame($playerColorIndices, $gameOptions, $this);
         $this->initializeGameState($bonsai);
@@ -407,6 +413,16 @@ class Bonsai extends Table implements BonsaiEvents
         ]);
     }
 
+    function onCardDiscarded($cardId)
+    {
+        $this->notifyAllPlayers('cardDiscarded', '${_cardId} is discarded', [
+            'i18n' => [ '_cardId' ],
+            '_cardId' => clienttranslate('a card'), // TODO: description of the card
+            'cardId' => $cardId,
+            'preserve' => [ 'cardId' ],
+        ]);
+    }
+
     function onCardRevealed($cardId)
     {
         // We use a null $cardId when there are no cards left.
@@ -461,18 +477,24 @@ class Bonsai extends Table implements BonsaiEvents
         $bonsai->endTurn();
         
         $this->saveGameState($bonsai);
-        
     }
 
-    function onGameOver($scores, $remainingTiles, $faceDownCards)
+    function onGameOver($scores, $remainingTiles, $faceDownCards, $wonSoloGame)
     {
         // Update game stats
         foreach ($remainingTiles as $playerId => $tileCount)
             $this->setStat($tileCount, 'tiles_remaining', $playerId);
 
+        // KILL: throw new Exception(json_encode([ 'wonSoloGame' => $wonSoloGame ]));
+
         // Record the final scores in the database
-        foreach ($scores as $playerId => $score)
-            $this->setPlayerScore($playerId, $score['total']);
+        if ($wonSoloGame === null)
+        {
+            foreach ($scores as $playerId => $score)
+                $this->setPlayerScore($playerId, $score['total']);
+        }
+        else
+            $this->setPlayerScore($playerId, $wonSoloGame ? 1 : 0);
 
         // Report the final scores to the players
         $this->notifyAllPlayers('finalScore', '', [

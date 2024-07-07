@@ -201,9 +201,12 @@
     top: 1em;
     perspective: 10em;
 }
+.bon_slot .bon_card {
+    position: relative;
+}
 .bon_state-playerTurn .bon_slot:has(.bon_card),
 .bon_state-client_meditate .bon_slot:has(.bon_card) {
-        cursor: pointer;
+    cursor: pointer;
 }
 #bon_slot-0 {
     left: 6.95em;
@@ -971,6 +974,36 @@
 .bon_log-tile-2 { background-position-x: -2.166em; }
 .bon_log-tile-3 { background-position-x: -4.333em; }
 .bon_log-tile-4 { background-position-x: -6.499em; }
+
+
+/* Solo Game */
+
+#bon_solo-panel {
+    display: inline-flex;
+    flex-direction: column;
+    padding: 1em;
+    gap: 0.5em;
+    background: rgba(255, 255, 255, .2);
+    border-radius: 0.5em;
+}
+
+.bon_solo-obj {
+    color: #222;
+    opacity: .8;
+    font-weight: 400;
+    display: flex;
+    flex-direction: row;
+    gap: 0.3em;
+}
+.bon_solo-obj-met {
+    opacity: 1;
+    font-weight: 700;
+}
+.bon_solo-obj-met .bon_solo-obj-status {
+    color: #090;
+}
+.bon_solo-obj-text{
+}
 
 
 /* Hidden cards popup */
