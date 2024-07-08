@@ -292,4 +292,18 @@ final class BonsaiLogicTest extends TestCase
 
         $this->assertTrue(true);
     }
+
+    public function testSlotIsEmptyErrorInSoloGame()
+    {
+        // table=534831198
+        $cardId = 41;
+        $playerId = 683709;
+        $bonsai = $this->bonsaiFromJson(
+            '{"v":2,"move":17,"board":[41,32,3,15],"order":[683709],"options":{"solo":1,"goals":true,"tokonoma":false},"players":{"683709":{"color":0,"faceUp":[8,2,16,18],"played":[[1,0,0,0],[1,0,1,0],[1,-1,1,0],[1,-2,1,0],[1,-3,0,0],[2,-4,0,4],[1,-2,-1,0],[2,-3,-2,3],[1,1,1,0],[1,2,1,0],[3,-2,-3,2],[3,-4,-2,4],[1,3,1,0],[1,4,1,0],[2,-3,2,5],[3,-5,0,4],[3,-4,2,4],[2,3,2,5],[3,-2,3,0],[2,4,2,0],[2,2,2,5],[2,-3,-1,3],[4,-4,-1,4]],"canPlay":{"leaf":1,"wild":1,"wood":2,"fruit":1,"flower":1},"claimed":[1,15,12],"capacity":7,"faceDown":[35,39,34,38,23,30,43,46],"mirrored":false,"inventory":{"leaf":0,"wood":0,"fruit":2,"flower":0},"renounced":[13,10]}},"version":2,"drawPile":[],"goalTiles":[3,10,13],"finalTurns":1,"nextPlayer":0}'
+        );
+
+        $bonsai->meditate($cardId, 0, [], [], [], [], []);
+
+        $this->assertTrue(true);
+    }
 }

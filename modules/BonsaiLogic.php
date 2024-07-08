@@ -457,9 +457,10 @@ class BonsaiLogic
             else
             {
                 // If the left-most slot, reveal the next card
-                // from the deck and discard it.
-                $this->revealCard();
-                $this->discardCard(0);
+                // from the deck and discard it. However, if the
+                // draw pile is empty then do nothing
+                if ($this->revealCard())
+                    $this->discardCard(0);
             }
         }
 
@@ -615,6 +616,8 @@ class BonsaiLogic
 
         array_unshift($this->data->board, $nextCardId);
         $this->events->onCardRevealed($nextCardId);
+
+        return !!$nextCardId;
     }
 
     function discardTiles($discards)
