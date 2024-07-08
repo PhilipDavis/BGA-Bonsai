@@ -485,14 +485,17 @@ class Bonsai extends Table implements BonsaiEvents
         foreach ($remainingTiles as $playerId => $tileCount)
             $this->setStat($tileCount, 'tiles_remaining', $playerId);
 
-        // Record the final scores in the database
-        if ($wonSoloGame === null)
+        // Record the final scores in the database.
+        // For a Solo game that is won and multi-
+        // player games, record the score as normal.
+        // Record a zero for a Solo game that was lost.
+        foreach ($scores as $playerId => $score)
         {
-            foreach ($scores as $playerId => $score)
+            if ($wonSoloGame === false)
+                $this->setPlayerScore($playerId, 0);
+            else
                 $this->setPlayerScore($playerId, $score['total']);
         }
-        else
-            $this->setPlayerScore($playerId, $wonSoloGame ? 1 : 0);
 
         // Report the final scores to the players
         $this->notifyAllPlayers('finalScore', '', [
