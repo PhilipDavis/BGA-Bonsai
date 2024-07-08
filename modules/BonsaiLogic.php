@@ -1091,7 +1091,7 @@ class BonsaiLogic
             '4' => 140,
         ][strval($this->data->options->solo)];
 
-        return $this->getPlayerScore($playerId) >= $pointsRequired;
+        return $this->getPlayerScore($playerId)['total'] >= $pointsRequired;
     }
 
     public function playZombieTurn()

@@ -485,8 +485,6 @@ class Bonsai extends Table implements BonsaiEvents
         foreach ($remainingTiles as $playerId => $tileCount)
             $this->setStat($tileCount, 'tiles_remaining', $playerId);
 
-        // KILL: throw new Exception(json_encode([ 'wonSoloGame' => $wonSoloGame ]));
-
         // Record the final scores in the database
         if ($wonSoloGame === null)
         {
