@@ -452,7 +452,8 @@ define([
         getExcessTileCount() {
             if (this.isSpectator) return 0;
             const { inventory, capacity } = this.data.players[this.myPlayerId];
-            const tileCount = Object.values(inventory).reduce((sum, n) => sum + n, 0);
+            const { wood, leaf, flower, fruit } = inventory;
+            const tileCount = wood + leaf + flower + fruit;
             return Math.max(0, tileCount - capacity);
         }
         
