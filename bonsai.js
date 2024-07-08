@@ -260,7 +260,7 @@ function (
         createSoloPanel() {
             createFromTemplate('bonsai_Templates.soloObjectivesPanel', {}, 'bon_goals', { placement: 'afterbegin' });
 
-            const msg = stringFromTemplate(_('Score at least ${N} points'), { N: SoloPointsRequired[bonsai.options.solo] });
+            const msg = stringFromTemplate(_('Score at least ${N} points'), { N: SoloPointsRequired[bonsai.options.solo || 1] });
             createFromTemplate('bonsai_Templates.soloObjective', {
                 DIV_ID: 'bon_solo-obj-points',
                 TEXT: msg,
@@ -289,7 +289,7 @@ function (
             const playerId = bonsai.data.order[0];
             const player = bonsai.players[playerId];
 
-            this.updateSoloObjective('bon_solo-obj-points', bonsai.getPlayerScore(playerId) >= SoloPointsRequired[bonsai.options.solo]);
+            this.updateSoloObjective('bon_solo-obj-points', bonsai.getPlayerScore(playerId) >= SoloPointsRequired[bonsai.options.solo || 1]);
 
             for (let i = 0; i < 3; i++) {
                 this.updateSoloObjective(`bon_solo-obj-goal${i + 1}`, player.claimed.length > i);
