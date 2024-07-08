@@ -44,14 +44,15 @@ class BonsaiLogic
 
         $version = 1;
         if (isset($data->version))
+        {
             $version = $data->version;
+            unset($data->version);
+        }
         else if (isset($data->v))
             $version = $data->v;
             
         if ($version < 2)
         {
-            unset($data->version);
-            
             // Start the move number from an invalid value
             // so that I don't mistake an upgraded game
             // to have a valid value.
@@ -71,7 +72,7 @@ class BonsaiLogic
         if ($version < BON_DATA_VERSION)
             throw new Exception('Data upgrade not implemented');
 
-        $data->version = BON_DATA_VERSION;
+        $data->v = BON_DATA_VERSION;
         return $data;
     }
 
