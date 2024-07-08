@@ -962,11 +962,13 @@ function (
                         continue;
                     }
                 }
-                div.classList.add('bon_selectable');
+                if (!this.isSpectator) {
+                    div.classList.add('bon_selectable');
+                }
                 enabledSome = true;
             }
 
-            if (enabledSome && scrollIntoView) {
+            if (enabledSome && scrollIntoView && !this.isSpectator) {
                 const containerDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);
                 containerDiv.scrollIntoView({ block: 'end', inline: 'center', behavior: 'smooth' }); 
             }
@@ -1794,6 +1796,7 @@ function (
 
         async notify_endTurn({ playerId, score }) {
             bonsai.endTurn();
+            this.makeTilesUnselectable();
             this.resetClientStateArgs();
             this.scoreCounter[playerId].setValue(score);
             this.updateSoloPanel();
