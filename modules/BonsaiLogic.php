@@ -452,7 +452,8 @@ class BonsaiLogic
             if ($index > 0)
             {
                 while ($index > 0 && $this->data->board[--$index] == null);
-                $this->discardCard($index);
+                if ($this->data->board[$index] !== null)
+                    $this->discardCard($index);
                 $this->revealCard();
             }
             else

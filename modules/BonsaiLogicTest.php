@@ -306,4 +306,25 @@ final class BonsaiLogicTest extends TestCase
 
         $this->assertTrue(true);
     }
+
+    public function testSoloErrorWhenBoardHasEmptySlot()
+    {
+        $cardId = 40;
+        $woodOrLeaf = 2;
+        $masterTiles = [];
+        $placed = [
+            [ "type" => 1, "x" => -3, "y" => -2, "r" => 0 ],
+        ];
+        $renounced = [];
+        $claimed = [ 15 ];
+        $discardTiles = [];
+
+        $bonsai = $this->bonsaiFromJson(
+            '{"v":2,"move":18,"board":[null,40,1,3],"order":[84162790],"options":{"solo":1,"goals":true,"tokonoma":false},"players":{"84162790":{"color":0,"faceUp":[15,11,7],"played":[[1,0,0,0],[1,0,1,0],[1,-1,1,0],[2,-2,2,5],[1,-2,1,0],[3,-2,3,5],[1,-3,0,0],[2,-1,2,5],[2,0,2,0],[4,0,3,0],[2,-3,2,5],[2,-3,1,4],[4,-4,2,5],[3,-4,0,3],[1,1,1,0],[2,1,2,0],[3,2,3,0],[1,2,1,0],[2,2,2,0],[1,3,1,0],[2,3,2,0],[4,3,3,0],[3,4,3,0],[1,-2,-1,0]],"canPlay":{"leaf":2,"wild":1,"wood":2,"fruit":0,"flower":1},"claimed":[],"capacity":5,"faceDown":[34,35,39,30,42,24,45,41,37],"mirrored":false,"inventory":{"leaf":0,"wood":1,"fruit":1,"flower":1},"renounced":[4,13]}},"drawPile":[],"goalTiles":[4,6,10,12,13,15],"finalTurns":1,"nextPlayer":0}'
+        );
+        
+        $bonsai->meditate($cardId, $woodOrLeaf, $masterTiles, $placed, $renounced, $claimed, $discardTiles);
+
+        $this->assertTrue(true);
+    }
 }
