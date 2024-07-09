@@ -49,14 +49,15 @@ define([], () => {
     class Tree {
         constructor() {
             this.nodes = {};
-            this.invalidKeys = {};
 
             // Mark the area used by the pot as invalid
+            this.invalidKeys = {};
+
             for (let y = -2; y <= 0; y++) {
-                for (let x = -2; x <= 3; x++) {
+                const x1 = y % 2 ? -1 : -2;
+                for (let x = x1; x <= 3; x++) {
                     if (x === 0 && y === 0) continue;
-                    let x_ = y % 2 ? x + 1 : x;
-                    this.invalidKeys[makeKey(x_, y)] = true;
+                    this.invalidKeys[makeKey(x, y)] = true;
                 }
             }
             delete this.invalidKeys['-2,-2']; // Allowed to place tile at bottom left foot of pot
