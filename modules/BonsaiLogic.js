@@ -750,6 +750,11 @@ define([
         
         getPlayerScore(playerId) {
             const player = this.data.players[playerId];
+            const showFullScore =
+                playerId === this.myPlayerId && (
+                    this.isSolo ||
+                    this.data.finalTurns === 0
+                );
     
             const leafMoves = player.played.filter(move => move[0] == TileType.Leaf);
             const flowerMoves = player.played.filter(move => move[0] == TileType.Flower);
@@ -763,9 +768,9 @@ define([
             const growthCards = player.faceUp.filter(cardId => Cards[cardId].type == CardType.Growth);
     
             // Face Down
-            const masterCards = player.faceDown.filter(cardId => Cards[cardId].type == CardType.Master);
-            const helperCards = player.faceDown.filter(cardId => Cards[cardId].type == CardType.Helper);
-            const parchmentCards = player.faceDown.filter(cardId => Cards[cardId].type == CardType.Parchment);
+            const masterCards = showFullScore ? player.faceDown.filter(cardId => Cards[cardId].type == CardType.Master) : 0;
+            const helperCards = showFullScore ? player.faceDown.filter(cardId => Cards[cardId].type == CardType.Helper) : 0;
+            const parchmentCards = showFullScore ? player.faceDown.filter(cardId => Cards[cardId].type == CardType.Parchment) : 0;
     
             // 3 Points per leaf
             const leafScore = leafTiles * 3;
