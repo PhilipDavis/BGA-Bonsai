@@ -123,3 +123,51 @@ BonsaiMats::$GoalTiles = [
         'log' => clienttranslate('the large cyan goal'),
     ],
 ];
+
+
+BonsaiMats::$ResourceLabels = [
+    TILETYPE_WILD => clienttranslate('Wild'),
+    TILETYPE_WOOD => clienttranslate('Wood'),
+    TILETYPE_LEAF => clienttranslate('Leaf'),
+    TILETYPE_FLOWER => clienttranslate('Flower'),
+    TILETYPE_FRUIT => clienttranslate('Fruit'),
+];
+
+BonsaiMats::$ParchmentLabels = [
+    TILETYPE_WOOD => clienttranslate('# of Wood Tiles'),
+    TILETYPE_LEAF => clienttranslate('# of Leaf Tiles'),
+    TILETYPE_FLOWER => clienttranslate('# of Flower Tiles'),
+    TILETYPE_FRUIT => clienttranslate('# of Fruit Tiles'),
+    CARDTYPE_GROWTH => clienttranslate('# of Growth cards'),
+    CARDTYPE_HELPER => clienttranslate('# of Helper cards'),
+    CARDTYPE_MASTER => clienttranslate('# of Master cards'),
+];
+
+foreach (BonsaiMats::$Cards as $cardId => $card)
+{
+    switch ($card->type)
+    {
+        case CARDTYPE_TOOL:
+            $card->label = clienttranslate('a Tool card');
+            break;
+
+        case CARDTYPE_GROWTH:
+            $card->label = sprintf(clienttranslate('a Growth card (%s)'), BonsaiMats::$ResourceLabels[$card->resources[0]]);
+            break;
+
+        case CARDTYPE_HELPER:
+            $card->label = sprintf(clienttranslate('a Helper card (%s, %s)'), BonsaiMats::$ResourceLabels[$card->resources[0]], BonsaiMats::$ResourceLabels[$card->resources[1]]);
+            break;
+
+        case CARDTYPE_MASTER:
+            if (count($card->resources) == 1)
+                $card->label = sprintf(clienttranslate('a Master card (%s)'), BonsaiMats::$ResourceLabels[$card->resources[0]]);
+            else
+                $card->label = sprintf(clienttranslate('a Master card (%s, %s)'), BonsaiMats::$ResourceLabels[$card->resources[0]], BonsaiMats::$ResourceLabels[$card->resources[1]]);
+            break;
+
+        case CARDTYPE_PARCHMENT:
+            $card->label = sprintf(clienttranslate('a Parchment card (%s)'), BonsaiMats::$ParchmentLabels[$card->resources[0]]);
+            break;
+    }
+}

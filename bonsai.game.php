@@ -363,7 +363,7 @@ class Bonsai extends Table implements BonsaiEvents
 
         $this->notifyAllPlayers('cardTaken', clienttranslate('${playerName} draws ${_cardId}'), [
             'i18n' => [ '_cardId' ],
-            '_cardId' => clienttranslate('a card'), // TODO? improve the details?
+            '_cardId' => $card->label,
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
             'cardId' => $cardId,
@@ -415,9 +415,10 @@ class Bonsai extends Table implements BonsaiEvents
 
     function onCardDiscarded($cardId)
     {
+        $card = BonsaiMats::$Cards[$cardId];
         $this->notifyAllPlayers('cardDiscarded', '${_cardId} is discarded', [
             'i18n' => [ '_cardId' ],
-            '_cardId' => clienttranslate('a card'), // TODO: description of the card
+            '_cardId' => $card->label,
             'cardId' => $cardId,
             'preserve' => [ 'cardId' ],
         ]);
@@ -429,9 +430,10 @@ class Bonsai extends Table implements BonsaiEvents
         // In this case, the client code still needs to animate
         // the shifting of the remaining cards.
         $msg = $cardId ? clienttranslate('The next card is ${_cardId}') : '';
+        $card = $cardId ? BonsaiMats::$Cards[$cardId] : null;
         $this->notifyAllPlayers('cardRevealed', $msg, [
             'i18n' => [ '_cardId' ],
-            '_cardId' => clienttranslate('a card'), // TODO: description of the card
+            '_cardId' => $card ? $card->label : 0,
             'cardId' => $cardId,
             'preserve' => [ 'cardId' ],
         ]);

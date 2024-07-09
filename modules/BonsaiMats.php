@@ -59,6 +59,8 @@ class BonsaiMats
     // the stupid limitation of not being able to use the
     // clienttranslate() wrapper in a static declaration.
     static array $GoalTiles = [];
+    static array $ResourceLabels = [];
+    static array $ParchmentLabels = [];
 
     static array $GoalTileTypes = [
         GOALTYPE_WOOD,
