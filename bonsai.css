@@ -202,7 +202,7 @@
     perspective: 10em;
 }
 .bon_slot .bon_card {
-    position: relative;
+    position: absolute;
 }
 .bon_state-playerTurn .bon_slot:has(.bon_card),
 .bon_state-client_meditate .bon_slot:has(.bon_card) {
