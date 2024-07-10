@@ -36,7 +36,7 @@
         "displaycondition": [
             {
                 "type": "minplayers",
-                "value": 2
+                "value": [ 2, 3, 4 ]
             }
         ],
         "default": "1"
