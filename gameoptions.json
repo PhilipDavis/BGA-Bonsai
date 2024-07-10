@@ -11,12 +11,6 @@
                 "tmdisplay": "All Parchment cards are placed in the first half of the deck"
             }
         },
-        "displaycondition": [
-            {
-                "type": "minplayers",
-                "value": 2
-            }
-        ],
         "default": "1"
     },
     "101": {
