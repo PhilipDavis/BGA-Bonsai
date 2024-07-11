@@ -332,13 +332,16 @@ function (
 
         calculateDeckHeight() {
             const { drawPile } = bonsai.data;
-            if (drawPile > 35) return 9;
-            if (drawPile > 25) return 8;
-            if (drawPile > 15) return 7;
-            if (drawPile > 10) return 6;
-            if (drawPile > 7) return 5;
-            if (drawPile > 5) return 4;
-            if (drawPile > 3) return 3;
+            if (drawPile > 35) return 12;
+            if (drawPile > 25) return 11;
+            if (drawPile > 20) return 10;
+            if (drawPile > 15) return 9;
+            if (drawPile > 10) return 8;
+            if (drawPile > 7) return 7;
+            if (drawPile > 5) return 6;
+            if (drawPile > 4) return 5;
+            if (drawPile > 3) return 4;
+            if (drawPile > 2) return 3;
             if (drawPile > 1) return 2;
             if (drawPile > 0) return 1;
             return 0;

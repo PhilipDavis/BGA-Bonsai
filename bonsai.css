@@ -193,6 +193,9 @@
 #bon_deck .bon_card:nth-of-type(7) { left: -.6em; top: -.6em; }
 #bon_deck .bon_card:nth-of-type(8) { left: -.7em; top: -.7em; }
 #bon_deck .bon_card:nth-of-type(9) { left: -.8em; top: -.8em; }
+#bon_deck .bon_card:nth-of-type(10) { left: -.9em; top: -.9em; }
+#bon_deck .bon_card:nth-of-type(11) { left: -1.0em; top: -1.0em; }
+#bon_deck .bon_card:nth-of-type(12) { left: -1.1em; top: -1.1em; }
 
 .bon_slot {
     position: absolute;
