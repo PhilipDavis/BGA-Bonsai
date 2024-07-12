@@ -1178,7 +1178,7 @@
             "goals others"
         ;
         grid-template-rows: 12em auto auto;
-        grid-template-columns: 1fr 4fr;
+        grid-template-columns: 1fr minmax(52.5em, 4fr);
     }
 
     #bon_goals {
@@ -1212,7 +1212,7 @@
             "goals player others"
         ;
         grid-template-rows: 12em auto auto;
-        grid-template-columns: 1fr 4fr 3fr;
+        grid-template-columns: 1fr minmax(52.5em, 4fr) 3fr;
     }
 
     #bon_goals {
