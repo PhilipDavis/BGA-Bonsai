@@ -181,21 +181,53 @@
     left: 1.05em;
     perspective: 10em;
 }
-#bon_deck .bon_card {
+#bon_deck > * {
     position: absolute;
 }
-#bon_deck .bon_card:nth-of-type(1) { left:   0em; top:   0em; }
-#bon_deck .bon_card:nth-of-type(2) { left: -.1em; top: -.1em; }
-#bon_deck .bon_card:nth-of-type(3) { left: -.2em; top: -.2em; }
-#bon_deck .bon_card:nth-of-type(4) { left: -.3em; top: -.3em; }
-#bon_deck .bon_card:nth-of-type(5) { left: -.4em; top: -.4em; }
-#bon_deck .bon_card:nth-of-type(6) { left: -.5em; top: -.5em; }
-#bon_deck .bon_card:nth-of-type(7) { left: -.6em; top: -.6em; }
-#bon_deck .bon_card:nth-of-type(8) { left: -.7em; top: -.7em; }
-#bon_deck .bon_card:nth-of-type(9) { left: -.8em; top: -.8em; }
-#bon_deck .bon_card:nth-of-type(10) { left: -.9em; top: -.9em; }
-#bon_deck .bon_card:nth-of-type(11) { left: -1.0em; top: -1.0em; }
-#bon_deck .bon_card:nth-of-type(12) { left: -1.1em; top: -1.1em; }
+#bon_deck :nth-child(1) { left:   0rem; top:   0rem; }
+#bon_deck :nth-child(2) { left: -.1rem; top: -.1rem; }
+#bon_deck :nth-child(3) { left: -.2rem; top: -.2rem; }
+#bon_deck :nth-child(4) { left: -.3rem; top: -.3rem; }
+#bon_deck :nth-child(5) { left: -.4rem; top: -.4rem; }
+#bon_deck :nth-child(6) { left: -.5rem; top: -.5rem; }
+#bon_deck :nth-child(7) { left: -.6rem; top: -.6rem; }
+#bon_deck :nth-child(8) { left: -.7rem; top: -.7rem; }
+#bon_deck :nth-child(9) { left: -.8rem; top: -.8rem; }
+#bon_deck :nth-child(10) { left: -.9rem; top: -.9rem; }
+#bon_deck :nth-child(11) { left: -1.0rem; top: -1.0rem; }
+#bon_deck :nth-child(12) { left: -1.1rem; top: -1.1rem; }
+
+#bon_deck-count {
+    width: 4.66rem;
+    height: 6.5rem;
+    opacity: 0;
+    transition: opacity 1s ease-out;
+    pointer-events: none;
+}
+.bon_pref-i-cant-function-without-a-deck-count #bon_deck-count {
+    opacity: 1;
+}
+#bon_deck-count::before {
+    position: absolute;
+    left: calc(50% - 1.5rem);
+    top: calc(50% - 1.5rem);
+    width: 3rem;
+    height: 3rem;
+    border-radius: 2rem;
+    background-color: #fff;
+    opacity: 1.75;
+    content: ' ';
+    filter: blur(0.5rem);
+}
+#bon_deck-count::after {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    font-size: 2em;
+    text-align: center;
+    line-height: 6.5rem;
+    content: attr(data-count);
+}
 
 .bon_slot {
     position: absolute;
