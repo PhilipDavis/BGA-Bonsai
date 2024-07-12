@@ -429,7 +429,7 @@ class Bonsai extends Table implements BonsaiEvents
         // We use a null $cardId when there are no cards left.
         // In this case, the client code still needs to animate
         // the shifting of the remaining cards.
-        $msg = $cardId ? clienttranslate('The next card is ${_cardId}') : '';
+        $msg = $cardId ? clienttranslate('${_cardId} is revealed from the deck') : '';
         $card = $cardId ? BonsaiMats::$Cards[$cardId] : null;
         $this->notifyAllPlayers('cardRevealed', $msg, [
             'i18n' => [ '_cardId' ],
