@@ -1130,11 +1130,11 @@ function (
             for (const playerId of Object.keys(scores)) {
                 runningTotals[playerId] = 0;
             }
-            // Delay to allow score counters to set to 0
-            await delayAsync(100);
 
             // Add the player names along the top
             for (const playerId of Object.keys(scores)) {
+                await delayAsync(500);
+
                 const { name, color } = this.gamedatas.players[playerId];
                 createFromTemplate('bonsai_Templates.finalScoreHeader', {
                     TEXT: name,
@@ -1149,8 +1149,6 @@ function (
                     COLOR: '#000',
                 }, 'bon_final-scores-table');
             }
-
-            await delayAsync(200);
 
             //
             // Add a row for each scoring category
@@ -1184,6 +1182,8 @@ function (
             // because that messes up the layout of the grid)
             //
             for (const key of scoringCategories) {
+                await delayAsync(800);
+
                 const rowPromises = Object.keys(scores).map(async (playerId, i) => {
                     if (key !== 'total') {
                         runningTotals[playerId] += scores[playerId][key];
@@ -1194,15 +1194,16 @@ function (
                     await scoreDiv.animate({
                         opacity: [ 0, 1 ],
                     }, {
-                        delay: 200 + 200 * i,
-                        duration: 400,
+                        delay: 400 + 400 * i,
+                        duration: 800,
                         easing: 'ease-out',
                         fill: 'forwards',
                     }).finished;
                 });
                 await Promise.all(rowPromises);
-                await delayAsync(200);
             }
+
+            await delayAsync(500);
 
             // Set the player summary scores
             for (const [ playerId, score ] of Object.entries(runningTotals)) {
