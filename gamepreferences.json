@@ -1,1 +1,17 @@
-{}
+{
+    "300": {
+        "name": "Show the number of cards in the deck",
+        "needReload": false,
+        "values": {
+            "1": {
+                "name": "Disabled",
+                "cssPref": "bon_pref-i-am-observant-and-value-realistic-gameplay"
+            },
+            "2": {
+                "name": "Enabled",
+                "cssPref": "bon_pref-i-cant-function-without-a-deck-count"
+            }
+        },
+        "default": 1
+    }
+}

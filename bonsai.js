@@ -350,15 +350,15 @@ function (
         updateDeck() {
             const desiredDeckSize = this.calculateDeckHeight();
             const deckDiv = document.getElementById('bon_deck');
-            let actualDeckSize = deckDiv.childElementCount;
+            let actualDeckSize = deckDiv.childElementCount - 1;
             while (actualDeckSize < desiredDeckSize) {
                 createFromTemplate('bonsai_Templates.deckCard', {
                     INDEX: actualDeckSize,
-                }, deckDiv);
+                }, deckDiv, { placement: 'afterbegin' });
                 actualDeckSize++;
             }
             while (actualDeckSize > desiredDeckSize) {
-                deckDiv.removeChild(deckDiv.lastElementChild);
+                deckDiv.removeChild(deckDiv.firstElementChild);
                 actualDeckSize--;
             }
             if (actualDeckSize > 0) {
@@ -367,6 +367,9 @@ function (
             else {
                 deckDiv.classList.add('bon_empty');
             }
+
+            const countDiv = document.getElementById('bon_deck-count');
+            countDiv.dataset.count = bonsai.data.drawPile;
         },
 
         onClickFaceDownPile() {

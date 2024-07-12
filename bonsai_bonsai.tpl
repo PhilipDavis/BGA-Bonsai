@@ -14,7 +14,7 @@
 <div id="bon_surface">
     <div id="bon_goals"></div> 
     <div id="bon_board">
-        <div id="bon_deck"></div>
+        <div id="bon_deck"><div id="bon_deck-count"></div></div>
         <div id="bon_slot-0" class="bon_slot"></div>
         <div id="bon_slot-1" class="bon_slot"></div>
         <div id="bon_slot-2" class="bon_slot"></div>
