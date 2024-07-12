@@ -244,6 +244,9 @@ define([], function () {
     // A helper function to replace "dojo.place(this.format_block(...), ...);"
     //
     function createFromTemplate(templateName, replacements, parentElementOrId, options = null) {
+        if (typeof options !== null && typeof options !== 'object') {
+            throw new Error('Expected options object');
+        }
         const {
             placement = 'beforeend', // type InsertPosition = 'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend';
             strict = false,

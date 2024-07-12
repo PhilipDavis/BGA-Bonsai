@@ -147,7 +147,7 @@ function (
             const playerScoreDiv = document.querySelector(`#player_board_${playerId} .player_score`);
             createFromTemplate('bonsai_Templates.playerSummary', {
                 PID: playerId,
-            }, playerScoreDiv, 'afterend');
+            }, playerScoreDiv, { placement: 'afterend' });
 
             createFromTemplate('bonsai_Templates.player', {
                 PID: playerId,
