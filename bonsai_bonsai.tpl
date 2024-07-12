@@ -14,6 +14,10 @@
 <div id="bon_surface">
     <div id="bon_goals"></div> 
     <div id="bon_board">
+        <div id="bon_slot-0-info" class="bon_slot-info"></div>
+        <div id="bon_slot-1-info" class="bon_slot-info"></div>
+        <div id="bon_slot-2-info" class="bon_slot-info"></div>
+        <div id="bon_slot-3-info" class="bon_slot-info"></div>
         <div id="bon_deck"><div id="bon_deck-count"></div></div>
         <div id="bon_slot-0" class="bon_slot"></div>
         <div id="bon_slot-1" class="bon_slot"></div>
@@ -68,10 +72,20 @@ const bonsai_Templates = {
             '</div>' +
             '<div id="bon_seishi-host-${PID}" class="bon_seishi-host">' +
                 '<div id="bon_seishi-${PID}" class="bon_seishi"></div>' +
-                '<div id="bon_seishi-facedown-${PID}" class="bon_seishi-facedown"></div>' +
+                '<div id="bon_seishi-facedown-${PID}" class="bon_seishi-facedown bon_empty"></div>' +
+                '<div id="bon_seishi-reference-${PID}" class="bon_seishi-reference"></div>' +
                 '<div id="bon_seishi-lhs-${PID}" class="bon_seishi-lhs"></div>' +
                 '<div id="bon_seishi-rhs-${PID}" class="bon_seishi-rhs"></div>' +
             '</div>' +
+        '</div>',
+
+    referenceToolTip:
+        '<div id="bon_reference-tooltip">' +
+            '<div class="bon_reference-card"></div>' +
+            '<div class="bon_seishi-ref-0">${TEXT0}</div>' +
+            '<div class="bon_seishi-ref-1">${TEXT1}</div>' +
+            '<div class="bon_seishi-ref-2">${TEXT2}</div>' +
+            '<div class="bon_seishi-ref-3">${TEXT3}</div>' +
         '</div>',
 
     goalTilePlaceholder:

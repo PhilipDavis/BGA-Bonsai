@@ -87,6 +87,24 @@ function (
                 'bon_goal-set-3-short': __('You need *${n}* more fruit tiles to qualify'),
                 'bon_goal-set-4-short': __('You need *${n}* more flowers on the same side to qualify'),
                 'bon_goal-set-5-short': __('You need *${n}* more criteria to qualify'),
+                'bon_slot-0-info': __('If you draw the card in this position, you do not take any bonsai tiles.'),
+                'bon_slot-1-info': __('If you draw the card in this position, you may take 1 wood *or* 1 leaf tile.'),
+                'bon_slot-2-info': __('If you draw the card in this position, you may take 1 wood *and* 1 flower tile.'),
+                'bon_slot-3-info': __('If you draw the card in this position, you may take 1 leaf *and* 1 fruit tile.'),
+                'bon_seishi-ref-0': __('*Wood* tiles are worth *0* points'),
+                'bon_seishi-ref-1': __('*Leafs* tiles /in your bonsai/ are worth *3* points'),
+                'bon_seishi-ref-2': __('*Flower* tiles /in your bonsai/ are worth *0 - 5* points || (*1* point for each side not touching any other Bonsai tile)'),
+                'bon_seishi-ref-3': __('*Fruit* tiles /in your bonsai/ are worth *7* points'),
+                'bon_tile-wood': __('*Wood*: must be placed adjacent to another wood tile.'),
+                'bon_tile-leaf': __('*Leaf*: must be placed adjacent to a wood tile.'),
+                'bon_tile-flower': __('*Flower*: must be placed adjacent to a leaf tile.'),
+                'bon_tile-fruit': __('*Fruit*: must be placed in the space adjacent to two adjacent leaf tiles. *You may not place a fruit adjacent to another fruit.*'),
+                'bon_card-type-1': __('*Tool cards* |||| Tool cards stay *in front of you for the rest of the game*. For each copy of this card you have, at the end of each turn, you can keep two additional tiles in your personal supply.'),
+                'bon_card-type-2': __('*Growth cards* |||| Growth cards stay *in front of you for the rest of the game*. When you /Cultivate/, you may place all tiles represented on your Growth cards in addition to the ones you can place thanks to your Seishi tile. If you have multiple copies of the same card, their effects add up. Choose freely the order in which you place the tiles. Each placement is optional.'),
+                'bon_card-type-3': __('*Helper cards* |||| Helper cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Place in your bonsai one tile of your choice, and/or one tile of the type shown, taken from your *personal supply* (you may place tiles you just took along with this card).'),
+                'bon_card-type-4': __('*Master cards* |||| Master cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Take the tiles shown on the card from the common supply. Take these tiles *in addition* to the tiles you would normally take depending on the position of the card on the board. Remember to respect your capacity limit at the end of your turn.'),
+                'bon_card-type-5': __('*Parchment cards* |||| Parchment cards are kept *face down in a pile* beside your Seishi tile. At the end of the game, each Parchment card awards points depending on the depicted images.'),
+                'bon_deck': __('When the last card from the deck is revealed, the game end is triggered: All players, including the one who triggered the end, get one more turn and then the game ends and points are tallied.'),
             };
 
             TileTypeLabel[TileType.Wood] = _('Wood');
@@ -120,9 +138,13 @@ function (
                 if (cardId !== null) {
                     this.createCard(cardId, true, `bon_slot-${i}`);
                 }
+
+                const slotInfoId = `bon_slot-${i}-info`;
+                this.addTooltipHtml(slotInfoId, this.toolTipText[slotInfoId], ToolTipDelay);
             }
             
             this.updateDeck();
+            this.addTooltipHtml('bon_deck', this.toolTipText['bon_deck'], ToolTipDelay);
 
             if (Object.keys(bonsai.players).length === 1) {
                 this.createSoloPanel(bonsai.players[this.myPlayerId]);
@@ -255,6 +277,14 @@ function (
                     }
                 }
             }
+
+            const html = formatBlock('bonsai_Templates.referenceToolTip', {
+                TEXT0: this.toolTipText['bon_seishi-ref-0'],
+                TEXT1: this.toolTipText['bon_seishi-ref-1'],
+                TEXT2: this.toolTipText['bon_seishi-ref-2'],
+                TEXT3: this.toolTipText['bon_seishi-ref-3'],
+            });
+            this.addTooltipHtmlToClass('bon_seishi-reference', html, ToolTipDelay);
         },
 
         createSoloPanel() {
@@ -416,6 +446,12 @@ function (
                 CARD_ID: cardId,
                 DOWN: faceUp ? '' : 'bon_card-face-down',
             }, divId);
+
+            const actualCardId = parseInt(cardId, 10);
+            if (!isNaN(actualCardId)) {
+                const { type } = Cards[actualCardId];
+                this.addTooltipHtml(divId, this.toolTipText[`bon_card-type-${type}`], ToolTipDelay);
+            }
         },
 
         createGoalSet(type) {
@@ -551,7 +587,9 @@ function (
                 Y_EM: 0,
                 DEG: 0,
             }, `bon_tiles-${playerId}`);
-            return document.getElementById(`bon_tile-${tileId}`);
+            const divId = `bon_tile-${tileId}`;
+            this.addTooltipHtml(divId, this.toolTipText[`bon_tile-${TileTypeName[tileType]}`], ToolTipDelay);
+            return document.getElementById(divId);
         },
 
         createTilePlaceholderInInventory(playerId, tileType) {
