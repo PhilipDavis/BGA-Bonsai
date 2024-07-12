@@ -836,8 +836,8 @@ function (
             {
                 case 'playerTurn':
                     this.updateLegalMoves();
-                    this.addActionButton('bon_button-meditate', _('Draw a Card'), () => this.onClickMeditate());
-                    this.addActionButton('bon_button-cultivate', _('Place Tiles'), () => this.onClickCultivate()); 
+                    this.addActionButton('bon_button-meditate', _('Meditate (Draw a Card)'), () => this.onClickMeditate());
+                    this.addActionButton('bon_button-cultivate', _('Cultivate (Place Tiles)'), () => this.onClickCultivate()); 
                     if (!this.clientStateArgs.hasLegalMoves) {
                         document.getElementById('bon_button-cultivate').classList.add('disabled');
                     }
