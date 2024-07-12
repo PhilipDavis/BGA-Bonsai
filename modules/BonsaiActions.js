@@ -351,15 +351,7 @@ class ReceiveTilesAction extends Action {
                 
                 const tileId = `${this.randomValue}-${tileType}-${index}`;
                 const divId = `bon_tile-${tileId}`;
-                createFromTemplate('bonsai_Templates.tile', {
-                    TILE_ID: tileId,
-                    TYPE: tileType,
-                    X_EM: 2.5,
-                    Y_EM: 3.25,
-                    DEG: 0,
-                }, `bon_slot-${this.slot}`);
-                gameui.placeOnObject(divId, `bon_slot-${this.slot}`);
-                gameui.raiseElementToBody(divId);
+                gameui.createTileOnSlot(tileId, tileType, this.slot);
                 
                 // Animate the width of the placeholder growing
                 const hostDiv = gameui.createTilePlaceholderInInventory(this.playerId, tileType);

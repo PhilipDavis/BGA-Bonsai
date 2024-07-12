@@ -101,10 +101,11 @@ function (
                 'bon_tile-fruit': __('*Fruit*: must be placed in the space adjacent to two adjacent leaf tiles. *You may not place a fruit adjacent to another fruit.*'),
                 'bon_card-type-1': __('*Tool cards* |||| Tool cards stay *in front of you for the rest of the game*. For each copy of this card you have, at the end of each turn, you can keep two additional tiles in your personal supply.'),
                 'bon_card-type-2': __('*Growth cards* |||| Growth cards stay *in front of you for the rest of the game*. When you /Cultivate/, you may place all tiles represented on your Growth cards in addition to the ones you can place thanks to your Seishi tile. If you have multiple copies of the same card, their effects add up. Choose freely the order in which you place the tiles. Each placement is optional.'),
-                'bon_card-type-3': __('*Helper cards* |||| Helper cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Place in your bonsai one tile of your choice, and/or one tile of the type shown, taken from your *personal supply* (you may place tiles you just took along with this card).'),
-                'bon_card-type-4': __('*Master cards* |||| Master cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Take the tiles shown on the card from the common supply. Take these tiles *in addition* to the tiles you would normally take depending on the position of the card on the board. Remember to respect your capacity limit at the end of your turn.'),
+                'bon_card-type-3': __('*Master cards* |||| Master cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Take the tiles shown on the card from the common supply. Take these tiles *in addition* to the tiles you would normally take depending on the position of the card on the board. Remember to respect your capacity limit at the end of your turn.'),
+                'bon_card-type-4': __('*Helper cards* |||| Helper cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Place in your bonsai one tile of your choice, and/or one tile of the type shown, taken from your *personal supply* (you may place tiles you just took along with this card).'),
                 'bon_card-type-5': __('*Parchment cards* |||| Parchment cards are kept *face down in a pile* beside your Seishi tile. At the end of the game, each Parchment card awards points depending on the depicted images.'),
                 'bon_deck': __('When the last card from the deck is revealed, the game end is triggered: All players, including the one who triggered the end, get one more turn and then the game ends and points are tallied.'),
+                'bon_seishi': __('At the start of the game, you only have your Seishi tile to place bonsai tiles. It allows you to place up to *one tile of your choice*, *one wood tile*, and *one leaf tile* during a /Cultivate/ action, in any order. |||| As the game progresses, you can acquire Growth cards that allow you to place more tiles when you choose to /Cultivate/.'),
             };
 
             TileTypeLabel[TileType.Wood] = _('Wood');
@@ -285,6 +286,8 @@ function (
                 TEXT3: this.toolTipText['bon_seishi-ref-3'],
             });
             this.addTooltipHtmlToClass('bon_seishi-reference', html, ToolTipDelay);
+
+            this.addTooltipHtmlToClass('bon_seishi', this.toolTipText['bon_seishi'], ToolTipDelay);
         },
 
         createSoloPanel() {
@@ -559,6 +562,20 @@ function (
                 DEG: 0,
             }, parentDivOrId);
             return document.getElementById(`bon_tile-${tileId}`);
+        },
+
+        createTileOnSlot(tileId, tileType, slot) {
+            const divId = `bon_tile-${tileId}`;
+            createFromTemplate('bonsai_Templates.tile', {
+                TILE_ID: tileId,
+                TYPE: tileType,
+                X_EM: 2.5,
+                Y_EM: 3.25,
+                DEG: 0,
+            }, `bon_slot-${slot}`);
+            this.addTooltipHtml(divId, this.toolTipText[`bon_tile-${TileTypeName[tileType]}`], ToolTipDelay);
+            this.placeOnObject(divId, `bon_slot-${slot}`);
+            this.raiseElementToBody(divId);
         },
 
         createTileInTree(playerId, tileType, x, y, r, visible = true) {
