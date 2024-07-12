@@ -234,8 +234,10 @@ function (
                 const parentId = `bon_reveal-cards-${playerId}`;
                 playerDiv.insertAdjacentHTML('beforeend', `<div id="${parentId}" class="bon_reveal-cards"></div>`);
 
-                for (const cardId of player.faceDown.sort()) {
-                    this.createCard(cardId, true, parentId);
+                if (typeof player.faceDown === 'object') { // faceDown will still be a number in an abandoned game
+                    for (const cardId of player.faceDown.sort()) {
+                        this.createCard(cardId, true, parentId);
+                    }
                 }
             }
             else {
@@ -416,7 +418,10 @@ function (
                 return cardA - cardB;
             }
 
-            const html = bonsai.players[this.myPlayerId].faceDown.sort(sortFaceDownCards).reduce((html, cardId) => {
+
+            const player = bonsai.players[this.myPlayerId];
+            if (!player) return;
+            const html = player.faceDown.sort(sortFaceDownCards).reduce((html, cardId) => {
                 return html + formatBlock('bonsai_Templates.seishiFaceDownCard', {
                     CARD_ID: cardId,
                 });
