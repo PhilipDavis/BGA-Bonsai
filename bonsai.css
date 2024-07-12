@@ -196,6 +196,8 @@
 #bon_deck :nth-child(10) { left: -.9rem; top: -.9rem; }
 #bon_deck :nth-child(11) { left: -1.0rem; top: -1.0rem; }
 #bon_deck :nth-child(12) { left: -1.1rem; top: -1.1rem; }
+#bon_deck :nth-child(13) { left: -1.2rem; top: -1.2rem; }
+#bon_deck :nth-child(14) { left: -1.3rem; top: -1.3rem; }
 
 #bon_deck-count {
     width: 4.66rem;
