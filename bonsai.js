@@ -164,6 +164,10 @@ function (
             });
 
             this.updateGoalTooltips();
+
+            if (this.gamedatas.gamestate.id == '99') {
+                this.animateFinalScoresAsync(scores, false);
+            }
         },
 
         setupPlayer(playerId, player, score, isGameOver) {
@@ -1182,7 +1186,7 @@ function (
             await Promise.all(promises);
         },
 
-        async animateFinalScoresAsync(scores) {
+        async animateFinalScoresAsync(scores, animate = true) {
             // Add the empty table and the top-left empty header cell
             createFromTemplate('bonsai_Templates.finalScores', '', 'bon_surface');
 
@@ -1193,8 +1197,9 @@ function (
 
             // Add the player names along the top
             for (const playerId of Object.keys(scores)) {
-                await delayAsync(500);
-
+                if (animate) {
+                    await delayAsync(500);
+                }
                 const { name, color } = this.gamedatas.players[playerId];
                 createFromTemplate('bonsai_Templates.finalScoreHeader', {
                     TEXT: name,
@@ -1242,8 +1247,9 @@ function (
             // because that messes up the layout of the grid)
             //
             for (const key of scoringCategories) {
-                await delayAsync(800);
-
+                if (animate) {
+                    await delayAsync(500);
+                }
                 const rowPromises = Object.keys(scores).map(async (playerId, i) => {
                     if (key !== 'total') {
                         runningTotals[playerId] += scores[playerId][key];
@@ -1251,19 +1257,26 @@ function (
 
                     const divId = `bon_final-score-${playerId}-${key}`;
                     const scoreDiv = document.getElementById(divId);
-                    await scoreDiv.animate({
-                        opacity: [ 0, 1 ],
-                    }, {
-                        delay: 400 + 400 * i,
-                        duration: 800,
-                        easing: 'ease-out',
-                        fill: 'forwards',
-                    }).finished;
+                    if (animate) {
+                        await scoreDiv.animate({
+                            opacity: [ 0, 1 ],
+                        }, {
+                            delay: 400 * i,
+                            duration: 800,
+                            easing: 'ease-out',
+                            fill: 'forwards',
+                        }).finished;
+                    }
+                    else {
+                        scoreDiv.style.opacity = 1;
+                    }
                 });
                 await Promise.all(rowPromises);
             }
 
-            await delayAsync(500);
+            if (animate) {
+                await delayAsync(500);
+            }
 
             // Set the player summary scores
             for (const [ playerId, score ] of Object.entries(runningTotals)) {
@@ -1276,7 +1289,9 @@ function (
             const scoreDiv = document.getElementById(divId);
             scoreDiv.classList.add('bon_winner');
 
-            await delayAsync(2000);
+            if (animate) {
+                await delayAsync(2000);
+            }
         },
 
 
