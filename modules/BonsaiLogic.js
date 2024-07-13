@@ -496,7 +496,7 @@ define([
 
         getGoalStatus(goalId) {
             if (this.isSpectator) return { goalId, status: GoalStatus.None };
-            const { renounced, claimed, played } = this.data.players[this.myPlayerId];
+            const { renounced, claimed } = this.data.players[this.myPlayerId];
 
             //
             // Is the goal absent from the available set?
@@ -517,11 +517,11 @@ define([
             // Has the player already claimed a goal of the same type
             // or renounced this goal?
             //
-            if (claimed.some(g => Goals[g].type === Goals[goalId].type)) {
-                return { goalId, status: GoalStatus.ClaimedType };
-            }
             if (renounced.indexOf(goalId) >= 0) {
                 return { goalId, status: GoalStatus.Renounced };
+            }
+            if (claimed.some(g => Goals[g].type === Goals[goalId].type)) {
+                return { goalId, status: GoalStatus.ClaimedType };
             }
             
             //
