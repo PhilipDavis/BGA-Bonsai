@@ -269,6 +269,7 @@
     content: ' ';
     border: dashed .2em rgba(0, 0, 0, .8);
     border-radius: .75em;
+    pointer-events: none;
 }
 .bon_state-playerTurn .bon_slot:has(.bon_card):hover::after,
 .bon_state-client_meditate .bon_slot:has(.bon_card):hover::after {

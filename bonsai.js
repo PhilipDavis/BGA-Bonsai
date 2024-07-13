@@ -458,11 +458,11 @@ function (
             };
         },
 
-        createCard(cardId, faceUp, divId = 'bon_surface') {
+        createCard(cardId, faceUp, parentDivId = 'bon_surface') {
             createFromTemplate('bonsai_Templates.card', {
                 CARD_ID: cardId,
                 DOWN: faceUp ? '' : 'bon_card-face-down',
-            }, divId);
+            }, parentDivId);
 
             const actualCardId = parseInt(cardId, 10);
             if (!isNaN(actualCardId)) {
@@ -472,7 +472,7 @@ function (
                     TITLE: this.toolTipText[`bon_card-type-${type}-title`],
                     TEXT: this.toolTipText[`bon_card-type-${type}-description`],
                 });
-                this.addTooltipHtml(divId, html, ToolTipDelay);
+                this.addTooltipHtml(`bon_card-${actualCardId}`, html, ToolTipDelay);
             }
         },
 
