@@ -590,24 +590,28 @@ class ClaimGoalAction extends Action {
         const scale = destRect.height / goalRect.height;
 
         if (gameui.instantaneousMode) {
-            goalDiv.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${scale})`;
+            destDiv.classList.remove('bon_hidden');
         }
         else {
-            goalDiv.style.zIndex = 100;
-            await goalDiv.animate({
+            // Move the summary goal on top of the visible goal,
+            // and then make it visible and delete the original.
+            destDiv.style.transform = `translate(${-deltaX}px, ${-deltaY}px) scale(${1 / scale})`;
+            destDiv.style.zIndex = 100;
+            destDiv.classList.remove('bon_hidden');
+            goalDiv.parentElement.removeChild(goalDiv);
+
+            // Slide the summary goal to the summary panel
+            await destDiv.animate({
                 transform: [
-                    `translate(${deltaX}px, ${deltaY}px) scale(${scale})`,
+                    `translate(0, 0) scale(1)`,
                 ],
             }, {
                 duration: 800, // TODO: base on distance
                 easing: 'ease-out',
                 fill: 'forwards',
             }).finished;
+            destDiv.style.zIndex = 1;
         }
-
-        // Now reveal the hidden goal tile and delete the old one
-        destDiv.classList.remove('bon_hidden');
-        goalDiv.parentElement.removeChild(goalDiv);
     }
 
     async animateGoalFromPlayerBoardAsync(playerId, goalId) {
