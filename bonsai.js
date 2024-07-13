@@ -1832,12 +1832,8 @@ function (
         async notify_tilesDiscarded({ playerId, tileType: tileTypes }) {
             if (playerId == this.myPlayerId && !g_archive_mode) return;
 
-            const adjustments =
-                Object.values(tileTypes)
-                    .reduce((obj, tileType) => ({ ...obj, [tileType]: (obj[tileType] || 0) - 1 }), {});
-
             // Fade out the discarded tiles
-            for (const [ tileType, delta ] of Object.entries(adjustments)) {
+            for (const tileType of tileTypes) {
                 const tileDiv = document.querySelector(`#bon_tiles-${playerId} .bon_tile-${tileType}`);
                 if (tileDiv) {
                     // Fade out the tile
@@ -1852,7 +1848,7 @@ function (
 
                     tileDiv.parentElement.removeChild(tileDiv);
                 }
-                bonsai.adjustPlayerInventory(playerId, tileType, delta);
+                bonsai.adjustPlayerInventory(playerId, tileType, -1);
             }
         },
 
