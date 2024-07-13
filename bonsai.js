@@ -518,13 +518,6 @@ function (
             }, `bon_player-summary-goals-${playerId}`);
             const divId = `bon_summary-goal-${playerId}-${goalId}`;
             const goalDiv = document.getElementById(divId);
-
-            /* KILL - there is an issue here I still need to investigate
-            if (!goalDiv) {
-                debugger; // KILL
-            }
-            */
-
             if (!claimed) {
                 goalDiv.insertAdjacentHTML('beforeend', '<div class="bon_renounced fa fa-close fa-lg"></div>');
             }
