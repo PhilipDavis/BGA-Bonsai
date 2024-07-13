@@ -79,6 +79,15 @@ const bonsai_Templates = {
             '</div>' +
         '</div>',
 
+    cardToolTip:
+        '<div id="bon_card-tooltip" class="bon_tooltip">' +
+            '<div class="bon_card bon_card-${CARD_ID}">' +
+                '<div class="bon_card-face"></div>' +
+            '</div>' +
+            '<div class="bon_tooltip-title">${TITLE}</div>' +
+            '<div class="bon_description">${TEXT}</div>' +
+        '</div>',
+
     referenceToolTip:
         '<div id="bon_reference-tooltip">' +
             '<div class="bon_reference-card"></div>' +

@@ -865,6 +865,24 @@
 .bon_tooltip-status .fa-close  { color: #222; }
 
 
+#bon_card-tooltip {
+    display: inline-grid;
+    grid-template-columns: 9.7em 1fr;
+    grid-template-rows: 3em auto;
+    grid-template-areas:
+        'card title'
+        'card desc'
+    ;
+    column-gap: 1em;
+}
+#bon_card-tooltip .bon_card {
+    grid-area: card;
+    margin: 3.5em 2.3em;
+    transform: scale(2);
+}
+#bon_card-tooltip .bon_tooltip-title { grid-area: title; }
+#bon_card-tooltip .bon_description { grid-area: desc; }
+
 
 /* Log */
 

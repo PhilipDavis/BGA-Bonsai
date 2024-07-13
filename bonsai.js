@@ -99,11 +99,16 @@ function (
                 'bon_tile-leaf': __('*Leaf*: must be placed adjacent to a wood tile.'),
                 'bon_tile-flower': __('*Flower*: must be placed adjacent to a leaf tile.'),
                 'bon_tile-fruit': __('*Fruit*: must be placed in the space adjacent to two adjacent leaf tiles. *You may not place a fruit adjacent to another fruit.*'),
-                'bon_card-type-1': __('*Tool cards* |||| Tool cards stay *in front of you for the rest of the game*. For each copy of this card you have, at the end of each turn, you can keep two additional tiles in your personal supply.'),
-                'bon_card-type-2': __('*Growth cards* |||| Growth cards stay *in front of you for the rest of the game*. When you /Cultivate/, you may place all tiles represented on your Growth cards in addition to the ones you can place thanks to your Seishi tile. If you have multiple copies of the same card, their effects add up. Choose freely the order in which you place the tiles. Each placement is optional.'),
-                'bon_card-type-3': __('*Master cards* |||| Master cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Take the tiles shown on the card from the common supply. Take these tiles *in addition* to the tiles you would normally take depending on the position of the card on the board. Remember to respect your capacity limit at the end of your turn.'),
-                'bon_card-type-4': __('*Helper cards* |||| Helper cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. Place in your bonsai one tile of your choice, and/or one tile of the type shown, taken from your *personal supply* (you may place tiles you just took along with this card).'),
-                'bon_card-type-5': __('*Parchment cards* |||| Parchment cards are kept *face down in a pile* beside your Seishi tile. At the end of the game, each Parchment card awards points depending on the depicted images.'),
+                'bon_card-type-1-title': _('Tool cards'),
+                'bon_card-type-2-title': _('Growth cards'),
+                'bon_card-type-3-title': _('Master cards'),
+                'bon_card-type-4-title': _('Helper cards'),
+                'bon_card-type-5-title': _('Parchment cards'),
+                'bon_card-type-1-description': __('Tool cards stay *in front of you for the rest of the game*. For each copy of this card you have, at the end of each turn, you can keep two additional tiles in your personal supply.'),
+                'bon_card-type-2-description': __('Growth cards stay *in front of you for the rest of the game*. When you /Cultivate/, you may place all tiles represented on your Growth cards in addition to the ones you can place thanks to your Seishi tile. If you have multiple copies of the same card, their effects add up. Choose freely the order in which you place the tiles. Each placement is optional.'),
+                'bon_card-type-3-description': __('Master cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. |||| Take the tiles shown on the card from the common supply. Take these tiles *in addition* to the tiles you would normally take depending on the position of the card on the board. Remember to respect your capacity limit at the end of your turn.'),
+                'bon_card-type-4-description': __('Helper cards are *activated once* when you take them, then they are kept *face down in a pile* beside your Seishi tile. |||| Place in your bonsai one tile of your choice, and/or one tile of the type shown, taken from your *personal supply* (you may place tiles you just took along with this card).'),
+                'bon_card-type-5-description': __('Parchment cards are kept *face down in a pile* beside your Seishi tile. At the end of the game, each Parchment card awards points depending on the depicted images.'),
                 'bon_deck': __('When the last card from the deck is revealed, the game end is triggered: All players, including the one who triggered the end, get one more turn and then the game ends and points are tallied.'),
                 'bon_seishi': __('At the start of the game, you only have your Seishi tile to place bonsai tiles. It allows you to place up to *one tile of your choice*, *one wood tile*, and *one leaf tile* during a /Cultivate/ action, in any order. |||| As the game progresses, you can acquire Growth cards that allow you to place more tiles when you choose to /Cultivate/.'),
             };
@@ -462,7 +467,12 @@ function (
             const actualCardId = parseInt(cardId, 10);
             if (!isNaN(actualCardId)) {
                 const { type } = Cards[actualCardId];
-                this.addTooltipHtml(divId, this.toolTipText[`bon_card-type-${type}`], ToolTipDelay);
+                const html = formatBlock('bonsai_Templates.cardToolTip', {
+                    CARD_ID: actualCardId,
+                    TITLE: this.toolTipText[`bon_card-type-${type}-title`],
+                    TEXT: this.toolTipText[`bon_card-type-${type}-description`],
+                });
+                this.addTooltipHtml(divId, html, ToolTipDelay);
             }
         },
 
