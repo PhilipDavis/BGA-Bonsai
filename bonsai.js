@@ -734,7 +734,7 @@ function (
             const tileWidth = Math.round(tileRect.width);
             const tileHeight = Math.round(tileRect.height);
             const hPadding = 2 * tileWidth;
-            const vPadding = 2 * tileHeight * .667;
+            const vPadding = tileHeight * .73 + tileHeight;
 
             // Remove the temporary container and reference tile
             hostDiv.removeChild(hiddenDiv);
@@ -742,51 +742,52 @@ function (
             const rect = hostDiv.getBoundingClientRect();
 
             const { x1, y1, x2, y2, y1Pot } = this.calculateBoundingCoords(playerId);
-            const width = (x2 - x1 + 1) * tileWidth;
+            const width = (x2 - (x1 - 1) + 1) * tileWidth;
             const paddedWidth = width + hPadding;
 
             const aboveTableRows = y2 - Math.max(y1, y1Pot) + 1;
-            const aboveTableHeight = (aboveTableRows - 1) * tileHeight * .667 + tileHeight;
+            const aboveTableHeight = (aboveTableRows - 1) * tileHeight * .73 + tileHeight;
 
             const belowTableRows = Math.max(y1, y1Pot) - y1;
-            const belowTableHeight = belowTableRows * tileHeight * .667;
+            const belowTableHeight = belowTableRows * tileHeight * .73;
 
             const height = aboveTableHeight + belowTableHeight;
-            const paddedHeight = height + vPadding;
+            const paddedHeight = Math.round(height + vPadding);
+
+            // Calculate the horizontal scale that fits the entire tree
+            // width in the container rectangle.
+            const scale = Math.min(1, rect.width / paddedWidth);
+
+            const threshold = 3;
+            if (paddedHeight * scale - rect.height > threshold) {
+                console.log(`Growing height to ${paddedHeight}px (scale ${scale})`);
+                hostDiv.style.height = `${paddedHeight}px`;
+            }
+            else if (paddedHeight * scale - rect.height < threshold) {
+                console.log(`Shrinking height to ${paddedHeight}px (scale ${scale})`);
+                hostDiv.style.height = `${paddedHeight}px`;
+            }
+
+            // Shift to the left or the right as the tree grows
+            // past either edge of the playable area
+            const leftWidth = Math.round(-(x1 - 1) * tileWidth + hPadding / 2);
+            const rightWidth = Math.round(x2 * tileWidth + hPadding / 2);
+            const hOffset = (rightWidth - leftWidth) / 2;
+            const leftOverflow = Math.round(Math.max(0, -((x1 - 1) * tileWidth - hPadding / 2) - rect.width / 2));
+            const rightOverflow = Math.round(Math.max(0, (x2 * tileWidth + hPadding / 2) - rect.width / 2));
 
             const treeDiv = document.getElementById(`bon_tree-${playerId}`);
             await transitionStyleAsync(treeDiv, style => {
-                // Calculate the horizontal scale that fits the entire tree
-                // width in the container rectangle.
-                const scale = Math.min(1, rect.width / paddedWidth);
                 style.transform = `scale(${scale})`;
-    
-                const threshold = 3;
-                if (paddedHeight * scale - rect.height > threshold) {
-                    console.log(`Growing height to ${paddedHeight}px`);
-                    hostDiv.style.height = `${paddedHeight}px`;
-                }
-                else if (paddedHeight * scale - rect.height < threshold) {
-                    console.log(`Shrinking height to ${paddedHeight}px`);
-                    hostDiv.style.height = `${paddedHeight}px`;
-                }
     
                 // Shift the pot upwards if the tree grows below the pot
                 style.bottom = `${belowTableHeight}px`;
 
-                // Shift to the left or the right as the tree grows
-                // past either edge of the playable area
-                const leftOverflow = Math.round(Math.max(0, -((x1 - 0.5) * tileWidth - hPadding / 2) - rect.width / 2) * scale);
-                const rightOverflow = Math.round(Math.max(0, x2 * tileWidth + hPadding / 2 - rect.width / 2) * scale);
-
-                if (leftOverflow) {
-                    style.left = `calc(50% + ${leftOverflow}px)`;
-                }
-                else if (rightOverflow) {
-                    style.left = `calc(50% - ${rightOverflow}px)`;
+                if (leftOverflow || rightOverflow) {
+                    style.left = `calc(50% - ${hOffset}px)`;
                 }
                 else {
-                    style.left = `calc(50%)`;
+                    style.left = '50%';
                 }
             });
         },
