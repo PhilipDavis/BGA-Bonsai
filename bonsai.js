@@ -1201,6 +1201,9 @@ function (
             // Add the empty table and the top-left empty header cell
             createFromTemplate('bonsai_Templates.finalScores', '', 'bon_surface');
 
+            const div = document.getElementById('bon_final-scores');
+            div.addEventListener('click', () => div.classList.toggle('bon_minimized'));
+
             const runningTotals = {};
             for (const playerId of Object.keys(scores)) {
                 runningTotals[playerId] = 0;

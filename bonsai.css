@@ -1169,6 +1169,13 @@
     border: solid .2em black;
     box-shadow: .25em .25em .5em rgba(0, 0, 0, 0.3);
     z-index: 1000;
+    transition: all .2s ease-out;
+    cursor: pointer;
+}
+#bon_final-scores.bon_minimized {
+    left: 5em;
+    top: 4em;
+    transform: translate(-50%, -50%) scale(.25);
 }
 
 #bon_final-scores-table {
