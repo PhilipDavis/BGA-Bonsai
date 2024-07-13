@@ -318,6 +318,14 @@ define([], function () {
     async function invokeServerActionAsync(actionName, args) {
         return new Promise((resolve, reject) => {
             try {
+                if (gameui.isSpectator) {
+                    console.error(`Action '${actionName}' not allowed for spectator`);
+                    return reject('Invalid');
+                }
+                if (g_archive_mode) {
+                    console.error(`Action '${actionName}' not allowed in archive mode`);
+                    return reject('Invalid');
+                }
                 if (!gameui.checkAction(actionName)) {
                     console.error(`Action '${actionName}' not allowed in ${gameui.currentState}`, args);
                     return reject('Invalid');
