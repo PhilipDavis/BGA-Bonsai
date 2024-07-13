@@ -143,7 +143,7 @@ define([], function () {
         }
 
         // TODO: this part is less generic... maybe make the template name resolution more flexible?
-        if (typeof replacements === 'object') {
+        if (typeof replacements === 'object' && replacements.constructor.name === 'Object') {
             for (const [ key, value ] of Object.entries(replacements)) {
                 const logMatch = /^_(?<dataKey>\D+)(?<index>\d*)$/.exec(key);
                 if (logMatch) {
