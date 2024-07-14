@@ -510,6 +510,36 @@ class Bonsai extends Table implements BonsaiEvents
         ]);
     }
 
+    public function onPlayerStart($playerId, $tiles)
+    {
+        $logParts = [];
+        $args = [];
+        $tileTypes = [];
+        $i = 1;
+        foreach ($tiles as $tileType)
+        {
+            $argName = 'tile' . strval($i);
+            $argValue = BonsaiMats::$ResourceLabels[$tileType];
+            $logParts[] = '${' . $argName . '}';
+            $args['i18n'][] = $argName;
+            $args[$argName] = $argValue;
+            $tileTypes[] = $tileType;
+            $i++;
+        }
+
+        $this->notifyAllPlayers('playerStart', clienttranslate('${playerName} begins with ${_tileType}'), [
+            'playerId' => $playerId,
+            'playerName' => $this->getPlayerNameById($playerId),
+            '_tileType' => [
+                'log' => implode(', ', $logParts),
+                'args' => $args,
+            ],
+            'tileType' => $tileTypes,
+            'tiles' => $tiles,
+            'preserve' => [ 'playerId', 'tiles', 'tileType' ],
+        ]);
+    }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions

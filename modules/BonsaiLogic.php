@@ -130,6 +130,17 @@ class BonsaiLogic
 
         $events->onGameStart($board);
 
+        foreach ($playerColors as $playerId => $colorIndex)
+        {
+            $tileTypes = [];
+            $inventory = $players->$playerId->inventory;
+            for ($i = 0; $i < $inventory->wood; $i++) $tileTypes[] = TILETYPE_WOOD;
+            for ($i = 0; $i < $inventory->leaf; $i++) $tileTypes[] = TILETYPE_LEAF;
+            for ($i = 0; $i < $inventory->flower; $i++) $tileTypes[] = TILETYPE_FLOWER;
+            for ($i = 0; $i < $inventory->fruit; $i++) $tileTypes[] = TILETYPE_FRUIT;
+            $events->onPlayerStart($playerId, $tileTypes);
+        }
+
         return new BonsaiLogic((object)[
             'v' => BON_DATA_VERSION,
             'options' => (array)$options,
