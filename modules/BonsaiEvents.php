@@ -3,6 +3,7 @@
 
 interface BonsaiEvents
 {
+    function onGameStart(array $cardIds);
     function onTileRemoved(int $playerId, int $tileType, int $x, int $y, int $score);
     function onTilesAdded(int $playerId, array $placeTiles, int $score);
     function onGoalRenounced(int $playerId, int $goalId);

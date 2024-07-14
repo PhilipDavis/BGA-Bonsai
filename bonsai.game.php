@@ -467,6 +467,31 @@ class Bonsai extends Table implements BonsaiEvents
         ]);
     }
 
+    function onGameStart($cardIds)
+    {
+        $cardsParams = [
+            'log' => clienttranslate('${_cardId1}, ${_cardId2}, ${_cardId3}, and ${_cardId4}'),
+            'args' => [
+                'i18n' => [ '_cardId1', '_cardId2', '_cardId3', '_cardId4' ],
+                'preserve' => [ 'cardId1', 'cardId2', 'cardId3', 'cardId4' ],
+            ],
+        ];
+
+        $i = 1;
+        foreach ($cardIds as $cardId)
+        {
+            $card = BonsaiMats::$Cards[$cardId];
+            $cardsParams['args']['_cardId' . strval($i)] = $card->label;
+            $cardsParams['args']['cardId' . strval($i)] = $cardId;
+            $i++;
+        }
+
+        $this->notifyAllPlayers('gameStart', clienttranslate('${cards} are revealed from the deck'), [
+            'i18n' => [ 'cards' ],
+            'cards' => $cardsParams,
+        ]);
+    }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions

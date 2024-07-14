@@ -209,6 +209,11 @@ define([], function () {
                 }
                 value = '';
             }
+            else if (typeof value === 'object' && typeof value.log === 'string') {
+                // Special case for nested log structures
+                const { log, args } = value;
+                value = stringFromTemplate(log, args, strict);
+            }
             return value;
         });
     }

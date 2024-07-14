@@ -128,6 +128,8 @@ class BonsaiLogic
         BonsaiLogic::setupStepF($playerIds, $players);
         // Step G: Keep the Scoring Pad handy
 
+        $events->onGameStart($board);
+
         return new BonsaiLogic((object)[
             'v' => BON_DATA_VERSION,
             'options' => (array)$options,
