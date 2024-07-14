@@ -261,20 +261,38 @@ class Bonsai extends Table implements BonsaiEvents
 
     function onTilesAdded($playerId, $placeTiles, $score)
     {
-        // TODO: stats
-
         $msg =
             count($placeTiles) == 1
-                ? clienttranslate('${playerName} adds ${n} tile')
-                : clienttranslate('${playerName} adds ${n} tiles');
+                ? clienttranslate('${playerName} adds ${n} tile: ${_tileType}')
+                : clienttranslate('${playerName} adds ${n} tiles: ${_tileType}');
+
+        $logParts = [];
+        $args = [];
+        $tileTypes = [];
+        $i = 1;
+        foreach ($placeTiles as $move)
+        {
+            $argName = 'tile' . strval($i);
+            $argValue = BonsaiMats::$ResourceLabels[$move['type']];
+            $logParts[] = '${' . $argName . '}';
+            $args['i18n'][] = $argName;
+            $args[$argName] = $argValue;
+            $tileTypes[] = $move['type'];
+            $i++;
+        }
 
         $this->notifyAllPlayers('tilesAdded', $msg, [
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
             'n' => count($placeTiles),
+            '_tileType' => [
+                'log' => implode(', ', $logParts),
+                'args' => $args,
+            ],
+            'tileType' =>$tileTypes,
             'tiles' => $placeTiles,
             'score' => $score,
-            'preserve' => [ 'playerId', 'tiles', 'score' ],
+            'preserve' => [ 'playerId', 'score', 'tiles', 'tileType' ],
         ]);
     }
 
