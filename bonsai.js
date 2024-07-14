@@ -1414,14 +1414,13 @@ function (
             delete this.clientStateArgs.placeAnother;
             delete this.clientStateArgs.alreadyPlaced;
             while (true) {
-                let prompt = null;
-                if (!skipSelectPrompt) {
-                    prompt = _('${you} may place ${RT[*]}');
-                }
-                skipSelectPrompt = false; // Only allow skipping the first time in the loop
-
                 const seishiResources = bonsai.getCanPlayResourceFilter();
-                const placed = yield * this.placeTileWorkflow(prompt, seishiResources);
+                const placed = yield * this.placeTileWorkflow(_('${you} may place ${RT[*]}'), seishiResources, skipSelectPrompt);
+
+                // Only allow skipping prompt the first time through
+                // (because the player clicked the tile directly to start
+                // Cultivate mode... but after that we're already in this mode)
+                skipSelectPrompt = false;
 
                 if (this.clientStateArgs.canceled) return false;
                 if (this.clientStateArgs.undo) {
@@ -1492,10 +1491,6 @@ function (
                     const firstTileType = yield * this.placeTileWorkflow(_('${you} may place ${RT[0]} and ${RT[1]}'), resources);
 
                     if (this.clientStateArgs.canceled) return false;
-                    if (this.clientStateArgs.undo) {
-                        yield new UndoLastAction();
-                        continue;
-                    }
 
                     // Bail out if the player cannot play a tile
                     if (!firstTileType) break;
@@ -1537,13 +1532,12 @@ function (
             }
             this.makeTilesUnselectable();
 
-            // TODO: allow player to confirm / cancel (unless preference says not to)
             yield new SetClientState('client_meditateConfirm', _('${you} must confirm your turn'));
 
             if (this.clientStateArgs.canceled) return false;
         },
 
-        * placeTileWorkflow(prompt, resourceFilter = undefined) {
+        * placeTileWorkflow(prompt, resourceFilter = undefined, skipSelectPrompt = false) {
             this.destroyAllVacancies();
             this.makeTilesUnselectable();
 
@@ -1573,7 +1567,7 @@ function (
                 }
 
                 // Prompt the player to select a tile to play
-                if (prompt) {
+                if (!skipSelectPrompt) {
                     // Sorry for this ugly code. This sets up the prompt to show resource type icons
                     const args = resourceFilter && {
                         'RT': i => {
@@ -1589,6 +1583,10 @@ function (
                     };
                     yield new SetClientState('client_selectInventoryTile', prompt, args);
                 }
+                // Only skip the select prompt the first time through the loop
+                // i.e. if the player undoes an action, we want the prompt to show
+                // from that point forward.
+                skipSelectPrompt = false;
 
                 // Exit the workflow if the player canceled or chose to Undo
                 if (this.clientStateArgs.canceled) return null;
@@ -1623,7 +1621,13 @@ function (
                 // as a result of having placed this tile.
                 yield * this.claimRenounceGoalsWorkflow();
 
-                if (this.clientStateArgs.undo) return null;
+                // If player clicked Undo after placing a tile and qualifying
+                // for a goal, undo the tile placement and prompt them again
+                // for their tile placement.
+                if (this.clientStateArgs.undo) {
+                    yield new UndoLastAction();
+                    continue;
+                }
 
                 return tileType;
             }
@@ -1670,9 +1674,8 @@ function (
 
                 yield new SetClientState('client_claimOrRenounceGoal', _('${you} must claim the goal or renounce it'));
 
-                if (this.clientStateArgs.undo) {
-                    return;
-                }
+                goalDiv.classList.remove('bon_selectable');                
+                if (this.clientStateArgs.undo) return;
 
                 const { claimed } = this.clientStateArgs;
                 if (claimed) {

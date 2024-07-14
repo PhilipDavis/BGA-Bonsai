@@ -454,7 +454,6 @@ class RenounceGoalAction extends Action {
             const divId = `bon_goal-${this.goalId}`;
             const goalDiv = document.getElementById(divId);
             goalDiv.classList.add('bon_ineligible');
-            goalDiv.classList.remove('bon_selectable');
         }
 
         bonsai.renounceGoal(this.playerId, this.goalId);
@@ -536,7 +535,6 @@ class ClaimGoalAction extends Action {
     async doAsync() {
         const divId = `bon_goal-${this.goalId}`;
         const goalDiv = document.getElementById(divId);
-        goalDiv.classList.remove('bon_selectable');
 
         await this.animateGoalToPlayerBoardAsync(this.playerId, this.goalId);
 
