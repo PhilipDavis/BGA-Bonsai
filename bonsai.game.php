@@ -504,7 +504,7 @@ class Bonsai extends Table implements BonsaiEvents
             $i++;
         }
 
-        $this->notifyAllPlayers('gameStart', clienttranslate('${cards} are revealed from the deck'), [
+        $this->notifyAllPlayers('gameStart', clienttranslate('The board begins with ${cards}'), [
             'i18n' => [ 'cards' ],
             'cards' => $cardsParams,
         ]);
