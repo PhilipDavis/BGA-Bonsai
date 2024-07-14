@@ -223,27 +223,6 @@ final class BonsaiLogicTest extends TestCase
     // Bug report #129376
     // '{"board":[35,11,34,8],"order":[90363429,88093060],"options":{"goals":true,"tokonoma":false},"players":{"88093060":{"color":1,"faceUp":[],"played":[[1,0,0,0]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[],"mirrored":false,"inventory":{"leaf":1,"wood":1,"fruit":0,"flower":0},"renounced":[]},"90363429":{"color":3,"faceUp":[],"played":[[1,0,0,0]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[44],"mirrored":false,"inventory":{"leaf":0,"wood":2,"fruit":0,"flower":1},"renounced":[]}},"v":2,"drawPile":[41,19,29,3,2,23,39,40,42,45,12,18,22,47,37,30,36,16,7,46,24,43,32,21,38,1,15],"goalTiles":[1,3,4,6,10,12],"finalTurns":null,"nextPlayer":1}'
 
-    public function testBugReport_129520_HelperTilePlacement()
-    {
-        $bonsai = $this->bonsaiFromJson(
-            '{"board":[21,39,1,9],"order":[2393716,2393718,2393717,2393715],"options":{"goals":true,"tokonoma":false},"players":{"2393715":{"color":0,"faceUp":[14],"played":[[1,0,0,0],[1,0,1,0],[2,-1,2,5],[1,-1,1,0],[2,-2,2,5],[3,-2,3,5],[1,1,1,0],[3,0,3,0],[1,2,1,0],[2,-2,1,4],[2,1,2,5],[4,-3,2,5]],"canPlay":{"leaf":2,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[38,37,25,42,27],"mirrored":false,"inventory":{"leaf":3,"wood":1,"fruit":0,"flower":1},"renounced":[13]},"2393716":{"color":2,"faceUp":[5,11],"played":[[1,0,0,0],[1,1,1,0],[1,1,2,0],[2,2,3,0],[2,2,2,1],[1,0,1,0],[3,3,2,1],[2,2,1,1],[1,-1,1,0],[2,-2,1,4],[1,-2,2,0],[2,-3,2,4]],"canPlay":{"leaf":2,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":7,"faceDown":[22,32,26,29],"mirrored":false,"inventory":{"leaf":3,"wood":0,"fruit":3,"flower":1},"renounced":[]},"2393717":{"color":3,"faceUp":[13,3],"played":[[1,0,0,0],[1,1,1,0],[2,2,1,1],[1,0,2,0],[3,3,1,1],[2,0,1,3],[1,0,3,0],[3,-1,1,4],[2,1,2,0],[1,0,4,0],[2,1,3,0],[4,2,2,1],[2,-1,2,3]],"canPlay":{"leaf":2,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[14],"capacity":7,"faceDown":[36,30,44,28],"mirrored":false,"inventory":{"leaf":0,"wood":0,"fruit":2,"flower":0},"renounced":[]},"2393718":{"color":1,"faceUp":[8,7,15],"played":[[1,0,0,0],[1,1,1,0],[1,2,1,0],[1,3,1,0],[2,3,2,0],[1,0,2,0],[1,0,3,0],[2,4,1,1],[4,4,2,1]],"canPlay":{"leaf":1,"wild":1,"wood":3,"fruit":0,"flower":1},"claimed":[13],"capacity":5,"faceDown":[33,24,34,47,40],"mirrored":false,"inventory":{"leaf":2,"wood":1,"fruit":1,"flower":1},"renounced":[]}},"v":2,"drawPile":[41,46,2,45,43,23,12,4,16,17,19,35,18],"goalTiles":[1,2,3,4,5,6,15],"finalTurns":null,"nextPlayer":3}'
-        );
-
-        $drawCardId = 39;
-        $woodOrLeaf = 0; // I don't know why the UI didn't send a wood/leaf choice...
-        $place = [
-            [ 'type' => 3, 'x' => -2, 'y' => 1, 'r' => 4 ],
-            [ 'type' => 3, 'x' => -1, 'y' => 3, 'r' => 5 ],
-        ];
-
-        $bonsai->meditate($drawCardId, $woodOrLeaf, [], $place, [], [], []);
-
-//    card=39&place=3,-2,1,4,3,-1,3,5&table=533140446
-//    card=40&place=4,-3,1,4,4,3,1,2&table=533103075
-
-        $this->assertTrue(true);
-    }
-
     public function testCheckingGoalEligibilitySkipsRenouncedGoals()
     {
         // This was from a bug I saw where I got an error after
@@ -324,6 +303,29 @@ final class BonsaiLogicTest extends TestCase
         );
         
         $bonsai->meditate($cardId, $woodOrLeaf, $masterTiles, $placed, $renounced, $claimed, $discardTiles);
+
+        $this->assertTrue(true);
+    }
+
+    public function testFlowerAdjacentToLeaf()
+    {
+        $bonsai = $this->bonsaiFromJson(
+            '{"v":2,"move":9,"board":[24,23,44,30],"order":[2393716,2393715],"options":{"goals":true,"tokonoma":false},"players":{
+                "2393715":{"color":1,"faceUp":[11,12],"played":[[1,0,0,0],[1,1,1,0],[2,1,2,0],[1,2,1,0],[2,2,2,0],[4,2,3,0]],"canPlay":{"leaf":3,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[37],"mirrored":false,"inventory":{"leaf":0,"wood":1,"fruit":0,"flower":1},"renounced":[]},
+                "2393716":{"color":0,"faceUp":[7,8,3],"played":[[1,0,0,0],[1,0,1,0],[2,-1,1,4]],"canPlay":{"leaf":1,"wild":1,"wood":3,"fruit":0,"flower":0},"claimed":[],"capacity":7,"faceDown":[38],"mirrored":false,"inventory":{"leaf":0,"wood":2,"fruit":1,"flower":1},"renounced":[]}
+            },"drawPile":[1,47,29,19,39,21,34,45,35,42,22,32,43,46,41,36,18,16,15,2,40],"goalTiles":[1,3,7,9,13,15],"finalTurns":null,"nextPlayer":0}'
+        );
+
+        $playerId = 2393716;
+        $removeTiles = [];
+        $placeTiles = [
+            [ 'type' => 1, 'x' => 1, 'y' => 1, 'r' => 0 ],
+            [ 'type' => 1, 'x' => 2, 'y' => 1, 'r' => 0 ],
+            [ 'type' => 3, 'x' => -2, 'y' => 1, 'r' => 4 ],
+        ];
+        $renounceGoals = [];
+        $claimGoals = [];
+        $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
 
         $this->assertTrue(true);
     }

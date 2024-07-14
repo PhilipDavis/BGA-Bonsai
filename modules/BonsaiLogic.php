@@ -290,14 +290,19 @@ class BonsaiLogic
         $player = $this->data->players->$playerId;
 
         // Note: manual says this is improbable... so can leave the logic for later
-        foreach ($removeTiles as $tile)
+        foreach ($removeTiles as $pos)
         {
-            $x = $tile[0];
-            $y = $tile[1];
+            $x = $pos[0];
+            $y = $pos[1];
 
             // Does this tile exist in the player tree?
-            if (count(array_filter($player->played, fn($move) => $move[1] == $x && $move[2] == $y)) < 1)
-                throw new BgaVisibleSystemException('Invalid removal');
+            $move = array_shift(array_filter($player->played, fn($move) => $move[1] == $x && $move[2] == $y));
+            if (!$move)
+                throw new BgaVisibleSystemException('Tile does not exist');
+
+            // Cannot remove a wood
+            if ($move[0] == TILETYPE_WOOD)
+                throw new Exception('Cannot remove wood tile');
 
             // TODO: only allowed to remove a certain type of tile?
             // TODO: is it valid to remove this tile? (e.g. all parts of tree are still connected to the base)
@@ -341,7 +346,8 @@ class BonsaiLogic
             else
                 throw new Exception('Invalid placement; overplayed');
 
-            // TODO: Is it valid to place this tile at the given location?
+            // Is it valid to place this tile at the given location?
+            $this->validatePlacement($playerId, $tile);
 
             // Add the tile into the tree
             $this->data->players->$playerId->played[] = [ $type, $x, $y, $r ];
@@ -792,12 +798,12 @@ class BonsaiLogic
             ];
 
         // Remove keys that are invalid (i.e. correspond to locations occupied by the pot)
-        $adjacentKeys = array_filter($adjacentKeys, function($key)
+        $adjacentKeys = array_filter($adjacentKeys, function($coords)
         {
-            $x = $key[0];
-            $y = $key[1];
+            $x = $coords[0];
+            $y = $coords[1];
             if ($y === 0)
-                return $x < -2 || $x > 3;
+                return $x < -2 || $x == 0 || $x > 3;
             else if ($y === -1)
                 return $x < -1 || $x > 3;
             else if ($y === -2)
@@ -806,6 +812,81 @@ class BonsaiLogic
         });
 
         return array_map(fn($coords) => BonsaiLogic::makeKey($coords[0], $coords[1]), $adjacentKeys);
+    }
+
+    public function getNeighbours($playerId, $x, $y) {
+        $player = $this->data->players->$playerId;
+
+        $result = [];
+        $adjacentCoords = BonsaiLogic::getAdjacentKeys(BonsaiLogic::makeKey($x, $y));
+
+        foreach ($adjacentCoords as $direction => $key)
+        {
+            $coords = BonsaiLogic::parseKey($key);
+            $neighbors = array_values(array_filter($player->played, fn($move) => $coords[0] == $move[1] && $coords[1] == $move[2]));
+            $neighbor = array_shift($neighbors);
+            if ($neighbor)
+                $result['_' . strval($direction)] = $neighbor; // Stupid hack because PHP messes up when the key is "0"
+        }
+        return $result;
+    }
+
+    public function validatePlacement($playerId, $tile)
+    {
+        $tileType = $tile['type'];
+        $x = $tile['x'];
+        $y = $tile['y'];
+        $rotation = $tile['r'];
+
+        $adjacentNodes = $this->getNeighbours($playerId, $x, $y);
+
+        // Wood must be placed adjacent to a Wood
+        if ($tileType == TILETYPE_WOOD)
+        {
+            foreach ($adjacentNodes as $dir => $node)
+                if ($node[0] == TILETYPE_WOOD) return;
+            throw new Exception('Wood must be adjacent to wood');
+        }
+
+        // Leaf must be placed adjacent to a Wood
+        else if ($tileType == TILETYPE_LEAF)
+        {
+            foreach ($adjacentNodes as $dir => $node)
+                if ($node[0] == TILETYPE_WOOD) return;
+            throw new Exception('Leaf must be adjacent to wood');
+        }
+
+        // Flower must be placed adjacent to a Leaf
+        else if ($tileType === TILETYPE_FLOWER)
+        {
+            foreach ($adjacentNodes as $dir => $node)
+                if ($node[0] == TILETYPE_LEAF) return true;
+            throw new Exception('Flower must be adjacent to leaf');
+        }
+
+        // Fruit must be placed adjacent to two adjacent Leaf tiles but not adjacent to another fruit
+        else if ($tileType === TILETYPE_FRUIT)
+        {
+            if (count(array_filter($adjacentNodes, fn($move) => $move[0] == TILETYPE_FRUIT)))
+                throw new Exception('Fruit may not be adjacent to fruit');
+
+            $adjKeys = array_keys($adjacentNodes);
+            $lastDir = array_pop($adjKeys);
+            $prevWasLeaf = $adjacentNodes[$lastDir][0] == TILETYPE_LEAF;
+            foreach ($adjacentNodes as $dir => $node)
+            {
+                if ($node[0] == TILETYPE_LEAF)
+                {
+                    if ($prevWasLeaf) return true;
+                    $prevWasLeaf = true;
+                }
+                else
+                    $prevWasLeaf = false;
+            }
+            throw new Exception('Fruit must be adjacent to two leaves');
+        }
+
+        throw new Exception('Unhandled tile type');
     }
 
     public static function countAdjacentLeafs($leafMoves)
