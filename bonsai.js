@@ -173,6 +173,21 @@ function (
             if (this.gamedatas.gamestate.id == '99') {
                 this.animateFinalScoresAsync(scores, false);
             }
+
+            // If the browser window is resized, schedule the trees
+            // to be repositioned. Only do the repositioning once
+            // the resizing has been idle for a while.
+            this.resizeTimerId = null;
+            this.resizeObserver = new ResizeObserver(() => {
+                clearTimeout(this.resizeTimerId);
+                this.resizeTimerId = setTimeout(() => {
+                    for (const playerId of bonsai.data.order) {
+                        this.adjustTreeSizeAndPosAsync(playerId);
+                    }
+                }, 200);
+            });
+            const surfaceDiv = document.getElementById('bon_surface');
+            this.resizeObserver.observe(surfaceDiv);
         },
 
         setupPlayer(playerId, player, score, isGameOver) {
