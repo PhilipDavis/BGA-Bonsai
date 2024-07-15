@@ -882,6 +882,9 @@ function (
 
                 case 'client_cultivateConfirm':
                     this.addActionButton('bon_button-cultivate-confirm-end-turn', _('End Turn'), () => this.onClickCultivateEndTurn());
+                    if (this.actionStack.canUndo()) {
+                        this.addActionButton(`bon_button-inventory-tile-undo`, _('Undo'), () => this.onClickUndo()); 
+                    }
                     this.addActionButton('bon_button-cultivate-confirm-cancel', _('Cancel'), () => this.onClickCancelCultivate(), null, false, 'red');
                     break;
                     
@@ -1429,15 +1432,28 @@ function (
             delete this.clientStateArgs.placeAnother;
             delete this.clientStateArgs.alreadyPlaced;
             while (true) {
-                const seishiResources = bonsai.getCanPlayResourceFilter();
-                const placed = yield * this.placeTileWorkflow(_('${you} may place ${RT[*]}'), seishiResources, skipSelectPrompt);
+                while (true) {
+                    const seishiResources = bonsai.getCanPlayResourceFilter();
+                    const placed = yield * this.placeTileWorkflow(_('${you} may place ${RT[*]}'), seishiResources, skipSelectPrompt);
 
-                // Only allow skipping prompt the first time through
-                // (because the player clicked the tile directly to start
-                // Cultivate mode... but after that we're already in this mode)
-                skipSelectPrompt = false;
+                    // Only allow skipping prompt the first time through
+                    // (because the player clicked the tile directly to start
+                    // Cultivate mode... but after that we're already in this mode)
+                    skipSelectPrompt = false;
 
-                if (this.clientStateArgs.canceled) return false;
+                    if (this.clientStateArgs.canceled) return false;
+                    if (this.clientStateArgs.undo) {
+                        yield new UndoLastAction();
+                        if (!this.actionStack.canUndo()) {
+                            delete this.clientStateArgs.alreadyPlaced;
+                        }
+                        continue;
+                    }
+                    if (!placed) break;
+                }
+
+                yield new SetClientState('client_cultivateConfirm', _('${you} must confirm your turn'));
+
                 if (this.clientStateArgs.undo) {
                     yield new UndoLastAction();
                     if (!this.actionStack.canUndo()) {
@@ -1445,13 +1461,8 @@ function (
                     }
                     continue;
                 }
-                if (!placed) break;
+                return !this.clientStateArgs.canceled;
             }
-
-            // TODO: allow player to confirm / cancel (unless preference says not to)
-            yield new SetClientState('client_cultivateConfirm', _('${you} must confirm your turn'));
-
-            if (this.clientStateArgs.canceled) return false;
         },
 
         // TODO: formalize the starting of a workflow; checking to see if one exists; advancing it; etc.
