@@ -240,15 +240,13 @@ class TakeCardAction extends Action {
         ;
         const isFaceDown = cardType !== CardType.Tool && cardType !== CardType.Growth;
         const isSorted = gameui.userWantsSorting();
-        const hasGrowthCards = bonsai.players[this.playerId].faceUp.some(cardId => Cards[cardId].type === CardType.Growth);
-        const isFruitGrowthCard = cardType === CardType.Growth && resource === TileType.Fruit;
 
         // Respect player's sorting preferences for Growth cards
         // (if the user has no growth cards or this is a Fruit card,
         // it will go at the end so take the other code path that
         // puts cards at the end -- this makes the sorted code path
         // a little simpler to write).
-        if (cardType === CardType.Growth && isSorted && hasGrowthCards && !isFruitGrowthCard) {
+        if (cardType === CardType.Growth && isSorted) {
             const destDiv = document.getElementById(destDivId);
             let cardOrHostDiv = destDiv.firstElementChild;
             while (cardOrHostDiv) {
@@ -262,9 +260,16 @@ class TakeCardAction extends Action {
                 }
                 cardOrHostDiv = cardOrHostDiv.nextElementSibling;
             }
-            createFromTemplate('bonsai_Templates.cardHost', {
-                CARD_ID: this.cardId,
-            }, cardOrHostDiv, { placement: 'beforebegin' });
+            if (cardOrHostDiv) {
+                createFromTemplate('bonsai_Templates.cardHost', {
+                    CARD_ID: this.cardId,
+                }, cardOrHostDiv, { placement: 'beforebegin' });
+            }
+            else {
+                createFromTemplate('bonsai_Templates.cardHost', {
+                    CARD_ID: this.cardId,
+                }, destDivId, { placement: 'beforeend' });
+            }
         }
         else {
             createFromTemplate('bonsai_Templates.cardHost', {
