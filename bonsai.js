@@ -35,6 +35,10 @@ function (
 
     const TileTypeLabel = {};
 
+    const Preference = {
+        SortedTilesAndCards: 301,
+    };
+
 
     return declare(`bgagame.${BgaGameId}`, ebg.core.gamegui, {
         constructor() {
@@ -158,7 +162,6 @@ function (
 
             // TODO: allow player to flip their pot? (maybe only at the start...?)
             // TODO: game preference to sort Seishi cards by type or not
-            // TODO: have variable speeds... 
 
             const playerInventoryTilesDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);
             playerInventoryTilesDiv?.addEventListener('click', e => {
@@ -249,6 +252,9 @@ function (
             for (const cardId of lhs) {
                 this.createCard(cardId, true, `bon_seishi-lhs-${playerId}`);
             }
+            if (gameui.userWantsSorting()) {
+                rhs.sort((a, b) => Cards[a].resource - Cards[b].resource);
+            }
             for (const cardId of rhs) {
                 this.createCard(cardId, true, `bon_seishi-rhs-${playerId}`);
             }
@@ -314,6 +320,10 @@ function (
             this.addTooltipHtmlToClass('bon_seishi-reference', html, ToolTipDelay);
 
             this.addTooltipHtmlToClass('bon_seishi', this.toolTipText['bon_seishi'], ToolTipDelay);
+        },
+
+        userWantsSorting() {
+            return gameui.getGameUserPreference(Preference.SortedTilesAndCards) == '2';
         },
 
         createSoloPanel() {
@@ -637,21 +647,36 @@ function (
         },
 
         createTilePlaceholderInInventory(playerId, tileType) {
-            // TODO: depending on preference, place in order or at the end
-            let hostId = `bon_tiles-${playerId}`;
+            const hostId = `bon_tiles-${playerId}`;
+
+            // Place tiles in order if the user prefers sorted tiles
+            if (this.userWantsSorting()) {
+                const hostDiv = document.getElementById(hostId);
+                let index = 0;
+                let tileDiv = hostDiv.firstElementChild;
+                while (tileDiv && tileType >= parseInt(tileDiv.dataset.type, 10)) {
+                    index++;
+                    tileDiv = tileDiv.nextElementSibling;
+                }
+                return this.createTilePlaceholderInInventoryAtIndex(playerId, index, tileType);
+            }
+
+            // Otherwise, just place the new tile at the end
             const divId = `bon_tile-placeholder-${Math.random().toString(28).substring(2)}`;
             createFromTemplate('bonsai_Templates.tileHost', {
                 DIV_ID: divId,
+                TYPE: tileType,
             }, hostId);
             return document.getElementById(divId);
         },
 
-        createTilePlaceholderInInventoryAtIndex(playerId, index) {
+        createTilePlaceholderInInventoryAtIndex(playerId, index, tileType) {
             const hostDiv = document.getElementById(`bon_tiles-${playerId}`);
             const divId = `bon_tile-placeholder-${Math.random().toString(28).substring(2)}`;
             if (index === 0) {
                 createFromTemplate('bonsai_Templates.tileHost', {
                     DIV_ID: divId,
+                    TYPE: tileType,
                 }, hostDiv, { placement: 'afterbegin' });
             }
             else {
@@ -661,6 +686,7 @@ function (
                 }
                 createFromTemplate('bonsai_Templates.tileHost', {
                     DIV_ID: divId,
+                    TYPE: tileType,
                 }, sibling, { placement: 'afterend' });
             }
             return document.getElementById(divId);
@@ -673,9 +699,10 @@ function (
             const divId = `bon_tile-placeholder-${Math.random().toString(28).substring(2)}`;
             createFromTemplate('bonsai_Templates.tileHost', {
                 DIV_ID: divId,
+                TYPE: tileDiv.dataset.type,
             }, tileDiv, { placement: 'beforeend' });
             const placeholderDiv = document.getElementById(divId);
-            placeholderDiv.style.width = '4.25em'; // TODO: how was placeholder null?
+            placeholderDiv.style.width = '4.25em';
             placeholderDiv.parentElement.removeChild(placeholderDiv);
             tileDiv.replaceWith(placeholderDiv);
             placeholderDiv.appendChild(tileDiv);
@@ -954,9 +981,7 @@ function (
             this.clientStateArgs.locked = false;
         },
 
-        // KILL?
         slideToObjectAsync(item, dest, duration = 500) {
-            // TODO: can make animation speed a game preference
             return new Promise(resolve => {
                 const slide = this.slideToObject(item, dest, duration);
                 dojo.connect(slide, 'onEnd', this, resolve);
@@ -1464,10 +1489,6 @@ function (
                 return !this.clientStateArgs.canceled;
             }
         },
-
-        // TODO: formalize the starting of a workflow; checking to see if one exists; advancing it; etc.
-        // TODO: probably need a mechanism for cancelling a workflow... (or just delete the workflow?)
-        // TODO: what about how to short circuit certain elements? (e.g. might already start with a selected card)
 
         * meditateWorkflow({ skipSelectPrompt = false } = {}) {
             if (!skipSelectPrompt) {

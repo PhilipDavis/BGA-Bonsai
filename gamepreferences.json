@@ -13,5 +13,18 @@
             }
         },
         "default": 1
+    },
+    "301": {
+        "name": "Sort tiles and cards by type",
+        "needReload": true,
+        "values": {
+            "1": {
+                "name": "Disabled"
+            },
+            "2": {
+                "name": "Enabled"
+            }
+        },
+        "default": 1
     }
 }

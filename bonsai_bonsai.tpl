@@ -147,6 +147,7 @@ const bonsai_Templates = {
     tileHost:
         '<div id="${DIV_ID}" ' +
             'class="bon_tile-placeholder" ' +
+            'data-type="${TYPE}" ' +
         '></div>',
 
     deckCard:
@@ -155,13 +156,20 @@ const bonsai_Templates = {
         '</div>',
 
     card:
-        '<div id="bon_card-${CARD_ID}" class="bon_card bon_card-${CARD_ID} ${DOWN}">' +
+        '<div '+
+            'id="bon_card-${CARD_ID}" ' +
+            'class="bon_card bon_card-${CARD_ID} ${DOWN}" ' +
+            'data-cardId="${CARD_ID}" ' +
+        '>' +
             '<div class="bon_card-face"></div>' +
             '<div class="bon_card-back"></div>' +
         '</div>',
 
     cardHost:
-        '<div id="bon_card-host-${CARD_ID}" class="bon_card-host">' +
+        '<div ' +
+            'id="bon_card-host-${CARD_ID}" ' +
+            'class="bon_card-host" ' +
+        '>' +
         '</div>',
 
     seishiFaceDownCard:

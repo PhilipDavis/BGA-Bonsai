@@ -120,7 +120,7 @@ class PlaceTileAction extends Action {
         //
         // Open a gap in inventory where the tile came from
         //
-        const destDiv = gameui.createTilePlaceholderInInventoryAtIndex(this.playerId, this.index);
+        const destDiv = gameui.createTilePlaceholderInInventoryAtIndex(this.playerId, this.index, this.tileType);
         const openGapPromise = destDiv.animate({
             width: [ '4.25em' ], // the width of a tile
         }, {
@@ -230,7 +230,7 @@ class TakeCardAction extends Action {
         // card slides to the correct place.
         //
         const hostDivId = `bon_card-host-${this.cardId}`;
-        const cardType = Cards[this.cardId].type;
+        const { type: cardType, resource } = Cards[this.cardId];
         const destDivId =
             cardType === CardType.Tool
                 ? `bon_seishi-lhs-${this.playerId}`
@@ -239,10 +239,40 @@ class TakeCardAction extends Action {
                     : `bon_seishi-facedown-${this.playerId}`
         ;
         const isFaceDown = cardType !== CardType.Tool && cardType !== CardType.Growth;
-        createFromTemplate('bonsai_Templates.cardHost', {
-            CARD_ID: this.cardId,
-        }, destDivId);
-        gameui.placeInElement(hostDivId, destDivId); // TODO: game pref to order cards or not
+        const isSorted = gameui.userWantsSorting();
+        const hasGrowthCards = bonsai.players[this.playerId].faceUp.some(cardId => Cards[cardId].type === CardType.Growth);
+        const isFruitGrowthCard = cardType === CardType.Growth && resource === TileType.Fruit;
+
+        // Respect player's sorting preferences for Growth cards
+        // (if the user has no growth cards or this is a Fruit card,
+        // it will go at the end so take the other code path that
+        // puts cards at the end -- this makes the sorted code path
+        // a little simpler to write).
+        if (cardType === CardType.Growth && isSorted && hasGrowthCards && !isFruitGrowthCard) {
+            const destDiv = document.getElementById(destDivId);
+            let cardOrHostDiv = destDiv.firstElementChild;
+            while (cardOrHostDiv) {
+                const cardDiv =
+                    cardOrHostDiv.classList.contains('bon_card-host')
+                        ? cardOrHostDiv.querySelector('.bon_card')
+                        : cardOrHostDiv;
+
+                if (resource < Cards[cardDiv.dataset.cardid].resource) {
+                    break;
+                }
+                cardOrHostDiv = cardOrHostDiv.nextElementSibling;
+            }
+            createFromTemplate('bonsai_Templates.cardHost', {
+                CARD_ID: this.cardId,
+            }, cardOrHostDiv, { placement: 'beforebegin' });
+        }
+        else {
+            createFromTemplate('bonsai_Templates.cardHost', {
+                CARD_ID: this.cardId,
+            }, destDivId);
+            gameui.placeInElement(hostDivId, destDivId);
+        }
+
         const cardDivId = `bon_card-${this.cardId}`;
         gameui.raiseElementToBody(cardDivId);
 
@@ -269,7 +299,7 @@ class TakeCardAction extends Action {
             }
         })();
 
-        await cardPromise; // TODO: collapse
+        await cardPromise;
 
         if (cardType === CardType.Tool) {
             gameui.adjustPlayerCapacity(this.playerId, 2);
@@ -311,7 +341,7 @@ class TakeCardAction extends Action {
             hostDiv.parentElement.removeChild(hostDiv);
         })();
 
-        await cardPromise; // TODO: collapse
+        await cardPromise;
 
         gameui.updateSoloPanel();
         const counter = gameui.scoreCounter[this.playerId];
@@ -711,7 +741,7 @@ class DiscardExcessTileAction extends Action {
 
     async undoAsync() {
         // Open a spot for the tile
-        const destDiv = gameui.createTilePlaceholderInInventoryAtIndex(this.playerId, this.index);
+        const destDiv = gameui.createTilePlaceholderInInventoryAtIndex(this.playerId, this.index, this.tileType);
         await destDiv.animate({
             width: [ '0em', '4.25em' ],
         }, {
