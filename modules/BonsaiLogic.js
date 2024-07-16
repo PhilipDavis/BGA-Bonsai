@@ -798,34 +798,42 @@ define([
                 for (const cardId of parchmentCards)
                 {
                     const card = Cards[cardId];
-                    switch (card.bonus)
-                    {
-                        case TileType.Wood:
-                            parchmentScore += card.points * woodTiles;
-                            break;
+                    switch (card.bonusType) {
+                        case 'tiles':
+                            switch (card.bonus)
+                            {
+                                case TileType.Wood:
+                                    parchmentScore += card.points * woodTiles;
+                                    break;
 
-                        case TileType.Leaf:
-                            parchmentScore += card.points * leafTiles;
+                                case TileType.Leaf:
+                                    parchmentScore += card.points * leafTiles;
+                                    break;
+                                    
+                                case TileType.Flower:
+                                    parchmentScore += card.points * flowerTiles;
+                                    break;
+                                    
+                                case TileType.Fruit:
+                                    parchmentScore += card.points * fruitTiles;
+                                    break;
+                            }
                             break;
-                            
-                        case TileType.Flower:
-                            parchmentScore += card.points * flowerTiles;
-                            break;
-                            
-                        case TileType.Fruit:
-                            parchmentScore += card.points * fruitTiles;
-                            break;
-
-                        case CardType.Growth:
-                            parchmentScore += card.points * growthCards.length;
-                            break;
-                            
-                        case CardType.Master:
-                            parchmentScore += card.points * masterCards.length;
-                            break;
-                            
-                        case CardType.Helper:
-                            parchmentScore += card.points * helperCards.length;
+                        
+                        case 'cards':
+                            switch (card.bonus) {
+                                case CardType.Growth:
+                                    parchmentScore += card.points * growthCards.length;
+                                    break;
+                                    
+                                case CardType.Master:
+                                    parchmentScore += card.points * masterCards.length;
+                                    break;
+                                    
+                                case CardType.Helper:
+                                    parchmentScore += card.points * helperCards.length;
+                                    break;
+                            }
                             break;
                     }
                 }
