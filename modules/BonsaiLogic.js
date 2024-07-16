@@ -856,7 +856,7 @@ define([
         makeKey,
         parseKey,
         Cards,
-        CardType, // TODO: verify if we need all these exports
+        CardType,
         Goals,
         GoalType,
         GoalSize,

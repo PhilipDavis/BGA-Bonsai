@@ -1494,6 +1494,7 @@ function (
             if (!skipSelectPrompt) {
                 yield new SetClientState('client_meditate', _('${you} must select a card'));
             }
+            this.makeTilesUnselectable();
 
             const { slot, cardId } = this.clientStateArgs;
             yield new TakeCardAction(this.myPlayerId, cardId, slot);
@@ -1751,8 +1752,6 @@ function (
             if (!cardId) return; // E.g. the slot is empty... either mid-animation or no cards left
 
             console.log(`onClickSlot(${slot})`);
-
-            this.makeTilesUnselectable(); // TODO: perhaps should be in the workflow / action
 
             const args = {
                 slot,
