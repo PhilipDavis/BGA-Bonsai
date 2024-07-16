@@ -1179,11 +1179,12 @@ class BonsaiLogic
             return false;
 
         $pointsRequired = [
-            '0' => 80, // I saw some cases where `solo` was 0...? Just default to the lowest level
-            '1' => 80,
-            '2' => 100,
-            '3' => 120,
-            '4' => 140,
+            '0' => 60, // I saw some cases where `solo` was 0...? Just default to the lowest level
+            '1' => 60,
+            '2' => 80,
+            '3' => 100,
+            '4' => 120,
+            '5' => 140,
         ][strval($this->data->options->solo)];
 
         return $this->getPlayerScore($playerId)['total'] >= $pointsRequired;
