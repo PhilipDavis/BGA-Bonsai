@@ -244,7 +244,10 @@ define([
             this.data = data;
             this.trees = {};
             for (const [ playerId, player ] of Object.entries(data.players)) {
-                this.trees[playerId] = new Tree(player.played);
+                // The tree is flipped if the bud is at (1, 0) instead of (0, 0).
+                const firstWoodTile = player.played[0];
+                const isFlipped = firstWoodTile[1] === 1;
+                this.trees[playerId] = new Tree(isFlipped);
             }
             this.placedThisTurn = {};
         }
@@ -630,8 +633,8 @@ define([
                     switch (size) {
                         case GoalSize.Small:
                             // Needs to protrude out the side opposite the gold crack in the pot
-                            count = played.some(move => this.getProtrudingDirection(move) === 1) ? 1 : 0;
-                            // TODO: if player can flip the pot, need to take that into account
+                            const goldCrackSide = this.isFlipped(playerId) ? -1 : 1;
+                            count = played.some(move => this.getProtrudingDirection(move) === goldCrackSide) ? 1 : 0;
                             break;
 
                         case GoalSize.Medium:
@@ -728,6 +731,21 @@ define([
 
         get options() {
             return this.data.options;
+        }
+
+        flip(playerId, isFlipped) {
+            const player = this.data.players[playerId];
+            player.played[0] = [ 1, isFlipped ? 1 : 0, 0, 0 ];
+
+            this.trees[playerId] = new Tree(isFlipped);
+            this.trees[playerId].placeTile(1, isFlipped ? 1 : 0, 0, 0);
+        }
+
+        isFlipped(playerId) {
+            // Wood tile at (0, 0) is standard
+            // Wood tile at (1, 0) is flipped
+            const firstWoodTile = this.data.players[playerId].played[0];
+            return firstWoodTile[1] == 1;
         }
 
         playerTree(playerId) {

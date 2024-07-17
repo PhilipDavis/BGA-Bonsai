@@ -4,7 +4,7 @@
 require_once('BonsaiMats.php');
 require_once('BonsaiEvents.php');
 
-define('BON_DATA_VERSION', 2); // Increment when the JSON data structure changes
+define('BON_DATA_VERSION', 3); // Increment when the JSON data structure changes
 
 // These colour indices correspond to the gameinfos->player_color field
 define('BON_PLAYER_GREY', 0);
@@ -68,6 +68,18 @@ class BonsaiLogic
 
             $version = 2;
         }
+            
+        if ($version < 3) // Jul 17, 2024
+        {
+            // Remove the "mirrored" flag.
+            // We'll just compute this based on the x-coord of the first wood tile.
+            // (0, 0) is the standard setup with the bud on the left
+            // (1, 0) is the flipped setup with the bug on the right
+            foreach ($data->order as $playerId)
+                unset($data->players->$playerId->mirrored);
+
+            $version = 3;
+        }
 
         if ($version < BON_DATA_VERSION)
             throw new Exception('Data upgrade not implemented');
@@ -111,7 +123,6 @@ class BonsaiLogic
                     'fruit' => 0,
                     'wild' => 1,
                 ],
-                'mirrored' => false, // TODO: allow players to flip the pot
                 'played' => (array)[],
                 'faceUp' => [], // Face-up cards that have been collected
                 'faceDown' => [], // Face-down cards that have been collected
@@ -273,13 +284,27 @@ class BonsaiLogic
         }
     }
 
+    function flip()
+    {
+        $playerId = $this->getNextPlayerId();
+        $played = $this->data->players->$playerId->played;
+        if (count($played) > 1)
+            throw new Exception('Too late to flip');
+        $this->events->onPotFlipped($playerId);
+        $isFlipped = $played[0][1] == 1; 
+        $this->data->players->$playerId->played = [ [ 1, $isFlipped ? 0 : 1, 0, 0 ] ];
+    }
+
 
     //
     // Cultivation Methods
     //
 
-    function cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals)
+    function cultivate($flip, $removeTile, $placeTiles, $renounceGoals, $claimGoals)
     {
+        if ($flip)
+            $this->flip();
+
         $playerId = $this->getNextPlayerId();
         $player = $this->data->players->$playerId;
 
@@ -300,12 +325,13 @@ class BonsaiLogic
         // Are there any vacancies adjacent to any wood tiles?
         $playerId = $this->getNextPlayerId();
         $played = $this->data->players->$playerId->played;
+        $isFlipped = $played[0][1] == 1;
         $woodTileMoves = array_values(array_filter($played, fn($move) => $move[0] == TILETYPE_WOOD));
 
         foreach ($woodTileMoves as $move)
         {
             $key = BonsaiLogic::makeKey($move[1], $move[2]);
-            $adjacentKeys = $this->getAdjacentKeys($key);
+            $adjacentKeys = $this->getAdjacentKeys($key, $isFlipped);
             foreach ($adjacentKeys as $adjKey)
             {
                 $coords = BonsaiLogic::parseKey($adjKey);
@@ -530,8 +556,11 @@ class BonsaiLogic
     // Meditation Methods
     //
 
-    function meditate($removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
+    function meditate($flip, $removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
     {
+        if ($flip)
+            $this->flip();
+
         $this->removeTile($removeTile);
 
         $index = 0;
@@ -862,7 +891,7 @@ class BonsaiLogic
         return array_map(fn($s) => intval($s), explode(',', $key));
     }
 
-    public static function getAdjacentKeys($key)
+    public static function getAdjacentKeys($key, $isFlipped)
     {
         $coords = BonsaiLogic::parseKey($key);
         $x = $coords[0];
@@ -886,12 +915,16 @@ class BonsaiLogic
             ];
 
         // Remove keys that are invalid (i.e. correspond to locations occupied by the pot)
-        $adjacentKeys = array_filter($adjacentKeys, function($coords)
+        $adjacentKeys = array_filter($adjacentKeys, function($coords) use ($isFlipped)
         {
             $x = $coords[0];
             $y = $coords[1];
             if ($y === 0)
-                return $x < -2 || $x == 0 || $x > 3;
+            {
+                if ($x == 0 && !$isFlipped) return true;
+                if ($x == 1 && $isFlipped) return true;
+                return $x < -2 || $x > 3;
+            }
             else if ($y === -1)
                 return $x < -1 || $x > 3;
             else if ($y === -2)
@@ -904,9 +937,10 @@ class BonsaiLogic
 
     public function getNeighbours($playerId, $x, $y) {
         $player = $this->data->players->$playerId;
+        $isFlipped = $player->played[0][1] == 1;
 
         $result = (object)[];
-        $adjacentCoords = BonsaiLogic::getAdjacentKeys(BonsaiLogic::makeKey($x, $y));
+        $adjacentCoords = BonsaiLogic::getAdjacentKeys(BonsaiLogic::makeKey($x, $y), $isFlipped);
 
         foreach ($adjacentCoords as $direction => $key)
         {
@@ -980,7 +1014,7 @@ class BonsaiLogic
         throw new Exception('Unhandled tile type');
     }
 
-    public static function countAdjacentLeafs($leafMoves)
+    public static function countAdjacentLeafs($leafMoves, $isFlipped)
     {
         $result = 0;
         $visited = (object)[];
@@ -1001,7 +1035,7 @@ class BonsaiLogic
                 $visited->$leafKey = true;
                 $count++;
                 
-                $adjacentKeys = array_values(BonsaiLogic::getAdjacentKeys($leafKey));
+                $adjacentKeys = array_values(BonsaiLogic::getAdjacentKeys($leafKey, $isFlipped));
                 $adjacentLeafKeys = array_values(array_filter($adjacentKeys, fn($key) => array_search($key, $leafKeys) !== false));
                 array_push($stack, ...$adjacentLeafKeys);
             }
@@ -1011,7 +1045,7 @@ class BonsaiLogic
         return $result;
     }
 
-    public static function getFlowerScore($moves)
+    public static function getFlowerScore($moves, $isFlipped)
     {
         $flowerMoves = array_filter($moves, fn($move) => $move[0] == TILETYPE_FLOWER);
 
@@ -1029,7 +1063,7 @@ class BonsaiLogic
         {
             $score += 6;
             $key = BonsaiLogic::makeKey($move[1], $move[2]);
-            $adjacentKeys = array_values(BonsaiLogic::getAdjacentKeys($key));
+            $adjacentKeys = array_values(BonsaiLogic::getAdjacentKeys($key, $isFlipped));
             foreach ($adjacentKeys as $adjKey)
             {
                 if (isset($filled->$adjKey))
@@ -1069,6 +1103,7 @@ class BonsaiLogic
     public function doesPlayerQualifyForGoal($playerId, $goalId)
     {
         $player = $this->data->players->$playerId;
+        $isFlipped = $player->played[0][1] == 1;
 
         $leafMoves = array_filter($player->played, fn($move) => $move[0] == TILETYPE_LEAF);
         $woodTiles = count(array_filter($player->played, fn($move) => $move[0] == TILETYPE_WOOD));
@@ -1083,7 +1118,7 @@ class BonsaiLogic
                 break;
 
             case GOALTYPE_LEAF:
-                $count = BonsaiLogic::countAdjacentLeafs($leafMoves);
+                $count = BonsaiLogic::countAdjacentLeafs($leafMoves, $isFlipped);
                 break;
 
             case GOALTYPE_FLOWER:
@@ -1102,8 +1137,9 @@ class BonsaiLogic
                 switch ($goalTile['size']) {
                     case GOALSIZE_SMALL:
                         // Needs to protrude out the side opposite the gold crack in the pot
-                        $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move) === 1));
-                        // TODO: if player can flip the pot, need to take that into account
+                        $isFlipped = $player->played[0][1] == 1;
+                        $goldCrackSide = $isFlipped ? -1 : 1;
+                        $count = count(array_filter($player->played, fn($move) => BonsaiLogic::getProtrudingDirection($move) === $goldCrackSide));
                         break;
 
                     case GOALSIZE_MEDIUM:
@@ -1133,6 +1169,7 @@ class BonsaiLogic
         $final = $this->getGameProgression() >= 100;
 
         $player = $this->data->players->$playerId;
+        $isFlipped = $player->played[0][1] == 1;
 
         $leafMoves = array_filter($player->played, fn($move) => $move[0] == TILETYPE_LEAF);
         $flowerMoves = array_filter($player->played, fn($move) => $move[0] == TILETYPE_FLOWER);
@@ -1154,7 +1191,7 @@ class BonsaiLogic
         $leafScore = $leafTiles * 3;
 
         // 1 Point per space adjacent to a flower
-        $flowerScore = BonsaiLogic::getFlowerScore($player->played);
+        $flowerScore = BonsaiLogic::getFlowerScore($player->played, $isFlipped);
 
         // 7 Points per fruit
         $fruitScore = $fruitTiles * 7;
@@ -1331,7 +1368,7 @@ class BonsaiLogic
     
             $placeTiles = []; // Place nothing
 
-            $this->meditate($cardId, $woodOrLeaf, [ $masterTile ], $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
+            $this->meditate(false, null, $cardId, $woodOrLeaf, [ $masterTile ], $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
         }
         else
         {
@@ -1348,7 +1385,7 @@ class BonsaiLogic
                     $renounceGoals[] = $goalId;
             }
 
-            $this->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+            $this->cultivate(false, $removeTiles, $placeTiles, $renounceGoals, $claimGoals);
         }
     }
 

@@ -24,7 +24,7 @@ function (
     { install, formatBlock, __, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
     { delayAsync, transitionStyleAsync, WorkflowManager, ActionStack, SetClientState, UndoLastAction, reflow },
     { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalStatus, TileType, TileTypeName, SoloPointsRequired },
-    { PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction, RemoveTilesAction },
+    { FlipPotAction, PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction, RemoveTilesAction },
 ) {
     const BgaGameId = 'bonsai';
 
@@ -160,9 +160,6 @@ function (
                 this.createSoloPanel(bonsai.players[this.myPlayerId]);
             }
 
-            // TODO: allow player to flip their pot? (maybe only at the start...?)
-            // TODO: game preference to sort Seishi cards by type or not
-
             const playerInventoryTilesDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);
             playerInventoryTilesDiv?.addEventListener('click', e => {
                 const { target } = e;
@@ -210,15 +207,24 @@ function (
                 const nameDiv = playerDiv.querySelector('.bon_player-name');
                 nameDiv.innerText = gameui.gamedatas.players[playerId]?.name || '';
             }
-
-            // Add the tree tiles of this user
-            const playerTiles = player.played;
+    
+            // Add the tree tiles of this user (skip the first tile)
+            const [ firstWoodTile, ...playerTiles ] = player.played;
+            bonsai.trees[playerId].placeTile(firstWoodTile[0], firstWoodTile[1], firstWoodTile[2], firstWoodTile[3]);
             for (const [ type, x, y, r ] of playerTiles) {
                 bonsai.trees[playerId].placeTile(type, x, y, r);
-                if (x != 0 || y != 0) {
-                    this.createTileInTree(playerId, type, x, y, r);
-                }
+                this.createTileInTree(playerId, type, x, y, r);
             }
+
+            // Flip the player's pot, if necessary
+            const isFlipped = firstWoodTile[1] == 1;
+            if (isFlipped) {
+                const treeDivId = `bon_tree-${playerId}`;
+                const treeDiv = document.getElementById(treeDivId);
+                const potDiv = treeDiv.querySelector('.bon_pot');
+                potDiv.style.transform = 'translate(-50%, 0) rotateY(180deg)';
+            }
+
             this.adjustTreeSizeAndPosAsync(playerId);
 
             this.scoreCounter[playerId] = new ebg.counter();
@@ -898,6 +904,9 @@ function (
                 case 'client_playerTurn':
                 case 'playerTurn':
                     this.updateLegalMoves();
+                    if (bonsai.players[this.myPlayerId].played.length === 1) {
+                        this.addActionButton('bon_button-flip', _('Flip Pot'), () => this.onClickFlipPot(), null, false, 'gray');
+                    }
                     if (this.makeRemovalsSelectable()) {
                         this.addActionButton('bon_button-prune', _('Remove Tiles'), () => this.onClickRemoveTiles(), null, false, 'gray');
                     }
@@ -1478,6 +1487,7 @@ function (
 
             const data = this.actionStack.apply();
             let {
+                flip,
                 remove,
                 place,
                 renounce,
@@ -1489,7 +1499,7 @@ function (
             renounce = renounce && [ renounce ].flatMap(g => g).join();
             claim = claim && [ claim ].flatMap(g => g).join();
             try {
-                await invokeServerActionAsync('cultivate', { remove, place, renounce, claim });
+                await invokeServerActionAsync('cultivate', { flip, remove, place, renounce, claim });
             }
             catch (err) {
                 return;
@@ -1811,6 +1821,23 @@ function (
             }
         },
 
+        async onClickFlipPot() {
+            if (!this.isCurrentPlayerActive()) return;
+            if (bonsai.players[this.myPlayerId].played.length > 1) return;
+            console.log(`onClickFlipPot()`);
+
+            // Flipping the pot is the first possible action...
+            // so we can safely assume we're undoing a previous flip
+            if (this.actionStack.canUndo()) {
+                await this.actionStack.undoAsync();
+            }
+            else {
+                const isFlipped = bonsai.isFlipped(this.myPlayerId);
+                await this.actionStack.doAsync(new FlipPotAction(this.myPlayerId, !isFlipped));
+            }
+            this.updateLegalMoves();
+        },
+
         async onClickRemoveTiles() {
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickRemoveTiles()`);
@@ -1858,6 +1885,7 @@ function (
 
             const data = this.actionStack.apply();
             let {
+                flip,
                 remove,
                 discard,
                 take: card,
@@ -1877,7 +1905,7 @@ function (
             renounce = renounce && [ renounce ].flatMap(g => g).join();
             claim = claim && [ claim ].flatMap(g => g).join();
             try {
-                await invokeServerActionAsync('meditate', { remove, card, choice, master, place, renounce, claim, discard });
+                await invokeServerActionAsync('meditate', { flip, remove, card, choice, master, place, renounce, claim, discard });
             }
             catch (err) {
                 return;
@@ -1901,6 +1929,12 @@ function (
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
+
+        async notify_potFlipped({ playerId }) {
+            if (playerId == this.myPlayerId && !g_archive_mode) return;
+
+            await new FlipPotAction(playerId).doAsync();
+        },
 
         async notify_tileRemoved({ playerId, x, y, score }) {
             if (playerId != this.myPlayerId || g_archive_mode) {

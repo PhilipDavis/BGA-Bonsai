@@ -47,7 +47,7 @@ define([], () => {
     };
     
     class Tree {
-        constructor() {
+        constructor(isFlipped) {
             this.nodes = {};
 
             // Mark the area used by the pot as invalid
@@ -56,7 +56,8 @@ define([], () => {
             for (let y = -2; y <= 0; y++) {
                 const x1 = y % 2 ? -1 : -2;
                 for (let x = x1; x <= 3; x++) {
-                    if (x === 0 && y === 0) continue;
+                    if (!isFlipped && x === 0 && y === 0) continue;
+                    if (isFlipped && x === 1 && y === 0) continue;
                     this.invalidKeys[makeKey(x, y)] = true;
                 }
             }

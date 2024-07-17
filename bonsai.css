@@ -484,6 +484,10 @@
     transform: translate(-50%, 0px);
     transform-origin: bottom center;
     transition: bottom .2s ease-out, left .2s ease-out;
+
+    /* For pot flipping */
+    transform-style: preserve-3d;
+    perspective: 50em;
 }
 
 .bon_tiles-host {
@@ -546,6 +550,7 @@
     bottom: 0em;
     left: 50%;
     transform: translate(-50%, 0);
+    transform-origin: 50% 50%;
 }
 .bon_color-grey   .bon_pot { background-position: 0em 0em; }
 .bon_color-blue   .bon_pot { background-position: -21em 0em; }

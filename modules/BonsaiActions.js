@@ -10,6 +10,60 @@ define([
     { Cards, CardType, Goals, TileType },
 ) => {
 
+class FlipPotAction extends Action {
+    constructor(playerId, isFlipped) {
+        super();
+        this.playerId = playerId;
+        this.isFlipped = isFlipped;
+    }
+
+    async doAsync() {
+        bonsai.flip(this.playerId, this.isFlipped);
+
+        const deg = this.isFlipped ? 180 : 0;
+
+        const treeDivId = `bon_tree-${this.playerId}`;
+        const treeDiv = document.getElementById(treeDivId);
+        const potDiv = treeDiv.querySelector('.bon_pot');
+        await potDiv.animate({
+            transform: [ `translate(-50%, 0) rotateY(${deg}deg)` ],
+        }, {
+            duration: 400,
+            easing: 'ease-out',
+            fill: 'forwards',
+        }).finished;
+    }
+
+    async undoAsync() {
+        bonsai.flip(this.playerId, !this.isFlipped);
+
+        const deg = this.isFlipped ? 0 : 180;
+
+        const treeDivId = `bon_tree-${this.playerId}`;
+        const treeDiv = document.getElementById(treeDivId);
+        const potDiv = treeDiv.querySelector('.bon_pot');
+        await potDiv.animate({
+            transform: [ `translate(-50%, 0) rotateY(${deg}deg)` ],
+        }, {
+            duration: 400,
+            easing: 'ease-out',
+            fill: 'forwards',
+        }).finished;
+    }
+
+    isCheckpoint() { return true; }
+
+    apply(array) {
+        return [
+            ...array,
+            {
+                action: 'flip',
+                data: 1, // Note: this.isFlipped doesn't matter... server will toggle the current state
+            },
+        ];
+    }
+}
+
 class PlaceTileAction extends Action {
     constructor(playerId, tileDivId, tileType, x, y, r) {
         super();
@@ -872,6 +926,7 @@ class RemoveTilesAction extends Action {
 }
 
     return {
+        FlipPotAction,
         PlaceTileAction,
         TakeCardAction,
         ReceiveTilesAction,

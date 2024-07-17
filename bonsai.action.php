@@ -59,6 +59,7 @@ class action_bonsai extends APP_GameAction
     {
         self::setAjaxMode();
 
+        $flip = self::getArg("flip", AT_num, false, 0);
         $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
         $remove = array_shift($removeTiles);
 
@@ -66,7 +67,7 @@ class action_bonsai extends APP_GameAction
         $renounce = $this->intsFromNumberListArg(self::getArg("renounce", AT_numberlist, false, ''));
         $claim = $this->intsFromNumberListArg(self::getArg("claim", AT_numberlist, false, ''));
 
-        $this->game->action_cultivate($remove, $place, $renounce, $claim);
+        $this->game->action_cultivate($flip, $remove, $place, $renounce, $claim);
         
         self::ajaxResponse();
     }
@@ -75,6 +76,7 @@ class action_bonsai extends APP_GameAction
     {
         self::setAjaxMode();
 
+        $flip = self::getArg("flip", AT_num, false, 0);
         $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
         $remove = array_shift($removeTiles);
 
@@ -96,7 +98,7 @@ class action_bonsai extends APP_GameAction
         // The player will have to discard tiles if she has too many
         $discardTiles = $this->intsFromNumberListArg(self::getArg("discard", AT_numberlist, false, ''));
 
-        $this->game->action_meditate($remove, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+        $this->game->action_meditate($flip, $remove, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
         
         self::ajaxResponse();
     }
