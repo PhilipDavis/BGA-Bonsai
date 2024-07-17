@@ -39,28 +39,28 @@
         "name": "Solo difficulty level",
         "values": {
             "1": {
-                "name": "Seito",
+                "name": "Seito (Beginner)",
                 "description": "You must claim three goals and score a minimum of 60 points.",
                 "tmdisplay": "Beginner (60 pts)",
                 "firstgameonly": true
             },
             "2": {
-                "name": "Gakusei",
+                "name": "Gakusei (Low)",
                 "description": "You must claim three goals and score a minimum of 80 points.",
                 "tmdisplay": "Low (80 pts)"
             },
             "3": {
-                "name": "Senmon",
+                "name": "Senmon (Medium)",
                 "description": "You must claim three goals and score a minimum of 100 points.",
                 "tmdisplay": "Medium (100 pts)"
             },
             "4": {
-                "name": "Sensei",
+                "name": "Sensei (High)",
                 "description": "You must claim three goals and score a minimum of 120 points.",
                 "tmdisplay": "High (120 pts)"
             },
             "5": {
-                "name": "Yúsha",
+                "name": "Yúsha (Extreme)",
                 "description": "You must claim three goals and score a minimum of 140 points.",
                 "tmdisplay": "Extreme (140 pts)"
             }
@@ -70,6 +70,7 @@
                 "type": "maxplayers",
                 "value": 1
             }
-        ]
+        ],
+        "default": "2"
     }
 }
