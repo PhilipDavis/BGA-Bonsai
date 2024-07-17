@@ -27,7 +27,7 @@ class action_bonsai extends APP_GameAction
     } 
 
     // Data exchange helper
-    private function tileLocsFromNumberList($list)
+    private function tileMovesFromNumberList($list)
     {
         $ints = $this->intsFromNumberListArg($list);
         $untypedChunks = array_chunk($ints, 4);
@@ -36,6 +36,16 @@ class action_bonsai extends APP_GameAction
             'x' => intval($chunk[1]),
             'y' => intval($chunk[2]),
             'r' => intval($chunk[3]),
+        ], $untypedChunks);
+    }
+
+    private function tileLocsFromNumberList($list)
+    {
+        $ints = $this->intsFromNumberListArg($list);
+        $untypedChunks = array_chunk($ints, 2);
+        return array_map(fn($chunk) => [
+            'x' => intval($chunk[0]),
+            'y' => intval($chunk[1]),
         ], $untypedChunks);
     }
 
@@ -49,10 +59,10 @@ class action_bonsai extends APP_GameAction
     {
         self::setAjaxMode();
 
-        $remove = explode(',', self::getArg("remove", AT_numberlist, false, ''));
-        if (count($remove) && $remove[0] == '') // HACK: empty value was turning into an array of 1 empty string
-            array_pop($remove);
-        $place = $this->tileLocsFromNumberList(self::getArg("place", AT_numberlist, true));
+        $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
+        $remove = array_shift($removeTiles);
+
+        $place = $this->tileMovesFromNumberList(self::getArg("place", AT_numberlist, true));
         $renounce = $this->intsFromNumberListArg(self::getArg("renounce", AT_numberlist, false, ''));
         $claim = $this->intsFromNumberListArg(self::getArg("claim", AT_numberlist, false, ''));
 
@@ -65,6 +75,9 @@ class action_bonsai extends APP_GameAction
     {
         self::setAjaxMode();
 
+        $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
+        $remove = array_shift($removeTiles);
+
         $drawCardId = intval(self::getArg("card", AT_posint, true));
 
         // Taking a card in the 2nd slot yields a choice of taking a wood tile or a leaf tile
@@ -74,7 +87,7 @@ class action_bonsai extends APP_GameAction
         $masterTiles = $this->intsFromNumberListArg(self::getArg("master", AT_numberlist, false, ''));
 
         // Helper cards allow the player to place some tiles
-        $place = $this->tileLocsFromNumberList(self::getArg("place", AT_numberlist, false, ''));
+        $place = $this->tileMovesFromNumberList(self::getArg("place", AT_numberlist, false, ''));
 
         // If tiles were placed, the player may have triggered the ability to renounce/claim goals
         $renounce = $this->intsFromNumberListArg(self::getArg("renounce", AT_numberlist, false, ''));
@@ -83,7 +96,7 @@ class action_bonsai extends APP_GameAction
         // The player will have to discard tiles if she has too many
         $discardTiles = $this->intsFromNumberListArg(self::getArg("discard", AT_numberlist, false, ''));
 
-        $this->game->action_meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+        $this->game->action_meditate($remove, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
         
         self::ajaxResponse();
     }

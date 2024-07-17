@@ -273,7 +273,7 @@ define([
             // a pruning operation which doesn't affect the turn caps.
             this.placedThisTurn[type] = Math.max(0, this.placedThisTurn[type] - 1);
             const player = this.players[playerId];
-            player.played = player.played.filter(move => move[1] !== x || move[2] !== y);
+            player.played = player.played.filter(move => move[1] != x || move[2] != y);
         }
 
         takeCardFromSlot(playerId, slot) {
@@ -388,6 +388,65 @@ define([
                 legalMoves[tileType] = tree.getLegalMoves(tileType);
             }
             return legalMoves;
+        }
+
+        canPlaceWood() {
+            // Are there any adjacent vacancies to any wood tile?
+            const { played } = this.data.players[this.myPlayerId];
+            const tree = this.trees[this.myPlayerId];
+            const woodTileKeys = played.filter(move => move[0] === TileType.Wood).map(move => makeKey(move[1], move[2]));
+
+            return woodTileKeys.some(key => {
+                const adjacentKeys = tree.getAdjacentKeys(key);
+                return Object.values(adjacentKeys).some(adjKey => !tree.getNode(adjKey));
+            });
+        }
+
+        getLegalRemoves() {
+            if (this.canPlaceWood()) {
+                return [];
+            }
+            const { played } = this.data.players[this.myPlayerId];
+            const tree = this.trees[this.myPlayerId];
+            const leafTileKeys = played.filter(move => move[0] === TileType.Leaf).map(move => makeKey(move[1], move[2]));
+
+            const scoredRemoves = leafTileKeys.map(key => {
+                const keys = [ key ];
+                let score = -3;
+                const neighbours = tree.getNeighbours(parseKey(key));
+                for (const [ dir, node ] of Object.entries(neighbours)) {
+                    const { type, x, y, r } = node;
+                    switch (type) {
+                        case TileType.Flower:
+                            if (dir == r) { // Flower is attached to this leaf
+                                // Note: this is an approximation... I'm not checking
+                                // to see which of the neighbours were also flowers. 
+                                score -= 6 - Object.entries(tree.getNeighbours({ x, y })).length;
+                                keys.push(makeKey(x, y));
+                            }
+                            break;
+                        case TileType.Fruit:
+                            if (dir == r || dir == (r + 5) % 6 || dir == (r + 1) % 6) { // Fruit is attached to this leaf
+                                score -= 7;
+                                keys.push(makeKey(x, y));
+                            }
+                            break;
+                    }
+                }
+                return {
+                    keys,
+                    score,
+                };
+            });
+
+            // Find the removals that affect the score the least
+            scoredRemoves.sort((a, b) => b.score - a.score);
+            const minimalRemoves =
+                scoredRemoves
+                    .filter(({ score }) => score === scoredRemoves[0].score)
+                    .map(({ keys }) => keys);
+
+            return minimalRemoves;
         }
 
         //

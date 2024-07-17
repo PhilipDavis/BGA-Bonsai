@@ -216,7 +216,7 @@ class Bonsai extends Table implements BonsaiEvents
 //////////// Player actions
 //////////// 
 
-    public function action_cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals)
+    public function action_cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals)
     {
         $activePlayerId = $this->validateCaller();
 
@@ -224,7 +224,7 @@ class Bonsai extends Table implements BonsaiEvents
         $stateBefore = $bonsai->toJson();
         try
         {
-            $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+            $bonsai->cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals);
         }
         catch (Throwable $e)
         {
@@ -232,7 +232,7 @@ class Bonsai extends Table implements BonsaiEvents
             $this->error(implode(', ', [
                 'Ref #' . $refId . ': cultivate failed',
                 'player: ' . $activePlayerId,
-                'inputs: ' . json_encode([ $removeTiles, $placeTiles, $renounceGoals, $claimGoals ]),
+                'inputs: ' . json_encode([ $removeTile, $placeTiles, $renounceGoals, $claimGoals ]),
                 'state: ' . $stateBefore,
                 'ex:' . $e,
             ]));
@@ -329,7 +329,7 @@ class Bonsai extends Table implements BonsaiEvents
         ]);
     }
 
-    public function action_meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles)
+    public function action_meditate($removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles)
     {
         $activePlayerId = $this->validateCaller();
 
@@ -337,7 +337,7 @@ class Bonsai extends Table implements BonsaiEvents
         $stateBefore = $bonsai->toJson();
         try
         {
-            $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+            $bonsai->meditate($removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
         }
         catch (Throwable $e)
         {
@@ -345,7 +345,7 @@ class Bonsai extends Table implements BonsaiEvents
             $this->error(implode(', ', [
                 'Ref #' . $refId . ': meditate failed',
                 'player: ' . $activePlayerId,
-                'inputs: ' . json_encode([ $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles ]),
+                'inputs: ' . json_encode([ $removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles ]),
                 'state: ' . $stateBefore,
                 'ex:' . $e,
             ]));

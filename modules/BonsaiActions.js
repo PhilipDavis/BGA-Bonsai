@@ -787,6 +787,89 @@ class DiscardExcessTileAction extends Action {
     }
 }
 
+class RemoveTilesAction extends Action {
+    constructor(playerId, removeTiles) {
+        super();
+        this.playerId = playerId;
+        this.removeTiles = removeTiles.map(tile => {
+            const { x, y } = tile;
+            const tileDiv = document.getElementById(`bon_tile-${this.playerId}-${x}-${y}`);
+            const type = parseInt(tileDiv.dataset.type, 10);
+            const r = parseInt(tileDiv.dataset.r, 10);
+            return { type, x, y, r }; 
+        });
+    }
+
+    async doAsync() {
+        const promises = this.removeTiles.map(async (node, i) => {
+            const { type, x, y } = node;
+            const tileDiv = document.getElementById(`bon_tile-${this.playerId}-${x}-${y}`);
+            await tileDiv.animate({
+                opacity: [ 1, 0 ],
+            }, {
+                delay: (i + 1) * 200,
+                duration: 400,
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
+
+            tileDiv.parentElement.removeChild(tileDiv);
+            bonsai.removeTile(this.playerId, x, y);
+            gameui.adjustPlayerPlaced(this.playerId, type, -1);
+        });
+        await Promise.all(promises);
+
+        // Grow the tree / host
+        await gameui.adjustTreeSizeAndPosAsync(this.playerId);
+
+        // Update the tool tips in case goal progressions changed
+        gameui.updateGoalTooltips();
+        gameui.updateSoloPanel();
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
+    }
+
+    async undoAsync() {
+        const promises = this.removeTiles.map(async (move, i) => {
+            const { type, x, y, r } = move;
+            const tileDiv = gameui.createTileInTree(this.playerId, type, x, y, r, false);
+            await tileDiv.animate({
+                opacity: [ 0, 1 ],
+            }, {
+                delay: i * 100,
+                duration: 200,
+                easing: 'ease-out',
+                fill: 'forwards',
+            }).finished;
+            tileDiv.classList.remove('bon_hidden');
+            bonsai.placeTile(this.playerId, type, x, y, r);
+            gameui.adjustPlayerPlaced(this.playerId, type, 1);
+        });
+        await Promise.all(promises);
+
+        // Grow the tree / host
+        await gameui.adjustTreeSizeAndPosAsync(this.playerId);
+
+        // Update the tool tips in case goal progressions changed
+        gameui.updateGoalTooltips();
+        gameui.updateSoloPanel();
+        const counter = gameui.scoreCounter[this.playerId];
+        counter.setValue(bonsai.getPlayerScore(this.playerId));
+    }
+
+    isCheckpoint() { return true; }
+
+    apply(array) {
+        return [
+            ...array,
+            {
+                action: 'remove',
+                // We only need the position of the first node, which is the leaf tile
+                data: this.removeTiles.map(({ type, x, y, r }) => [ x, y ]).shift(),
+            },
+        ];
+    }
+}
 
     return {
         PlaceTileAction,
@@ -795,5 +878,6 @@ class DiscardExcessTileAction extends Action {
         RenounceGoalAction,
         ClaimGoalAction,
         DiscardExcessTileAction,
+        RemoveTilesAction,
     };
 });

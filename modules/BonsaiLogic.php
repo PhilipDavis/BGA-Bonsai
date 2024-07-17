@@ -278,12 +278,12 @@ class BonsaiLogic
     // Cultivation Methods
     //
 
-    function cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals)
+    function cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals)
     {
         $playerId = $this->getNextPlayerId();
         $player = $this->data->players->$playerId;
 
-        $this->removeTiles($removeTiles);
+        $this->removeTile($removeTile);
         $this->placeTiles($placeTiles, $player->canPlay);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
@@ -295,32 +295,107 @@ class BonsaiLogic
         }
     }
 
-    function removeTiles($removeTiles)
+    function canPlaceWood(): bool
+    {
+        // Are there any vacancies adjacent to any wood tiles?
+        $playerId = $this->getNextPlayerId();
+        $played = $this->data->players->$playerId->played;
+        $woodTileMoves = array_values(array_filter($played, fn($move) => $move[0] == TILETYPE_WOOD));
+
+        foreach ($woodTileMoves as $move)
+        {
+            $key = BonsaiLogic::makeKey($move[1], $move[2]);
+            $adjacentKeys = $this->getAdjacentKeys($key);
+            foreach ($adjacentKeys as $adjKey)
+            {
+                $coords = BonsaiLogic::parseKey($adjKey);
+                if (!$this->doesTileExist($playerId, $coords[0], $coords[1]))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    function doesTileExist($playerId, $x, $y): bool
+    {
+        $played = $this->data->players->$playerId->played;
+        foreach ($played as $move)
+        {
+            if ($move[1] == $x && $move[2] == $y)
+                return true;
+        }
+        return false;
+    }
+
+    //
+    // Given the position of a leaf tile, calculate
+    // which other tiles need to be removed if this
+    // leaf tile is removed.
+    //
+    function getTilesForRemoval($pos)
     {
         $playerId = $this->getNextPlayerId();
-        $player = $this->data->players->$playerId;
 
-        // Note: manual says this is improbable... so can leave the logic for later
+        $x = $pos['x'];
+        $y = $pos['y'];
+
+        $keys = [ $pos ];
+        $neighbours = $this->getNeighbours($playerId, $x, $y);
+
+        foreach ($neighbours as $dir => $node)
+        {
+            switch ($node[0])
+            {
+                case TILETYPE_FLOWER:
+                    if ($dir == $node[3]) { // Flower is attached to this leaf
+                        $keys[] = [ 'x' => $node[1], 'y' => $node[2] ];
+                    }
+                    break;
+
+                case TILETYPE_FRUIT:
+                    if ($dir == $node[3] || $dir == ($node[3] + 5) % 6 || $dir == ($node[3] + 1) % 6) { // Fruit is attached to this leaf
+                        $keys[] = [ 'x' => $node[1], 'y' => $node[2] ];
+                    }
+                    break;
+            }
+        }
+
+        return $keys;
+    }
+
+    function removeTile($removeTile)
+    {
+        if (!isset($removeTile))
+            return;
+
+        $playerId = $this->getNextPlayerId();
+
+        if ($this->canPlaceWood())
+            throw new Exception('Cannot remove tiles while wood is playable');
+
+        // Calculate all the tiles that need to be removed
+        // after having removed $removeTile (e.g. any flower
+        // and fruit tiles connected to it) 
+        $removeTiles = $this->getTilesForRemoval($removeTile);
+
         foreach ($removeTiles as $pos)
         {
-            $x = $pos[0];
-            $y = $pos[1];
+            $x = $pos['x'];
+            $y = $pos['y'];
 
             // Does this tile exist in the player tree?
-            $move = array_shift(array_filter($player->played, fn($move) => $move[1] == $x && $move[2] == $y));
+            $moves = array_filter($this->data->players->$playerId->played, fn($move) => $move[1] == $x && $move[2] == $y);
+            $move = array_shift($moves);
             if (!$move)
                 throw new BgaVisibleSystemException('Tile does not exist');
+            $tileTypeId = $move[0];
 
             // Cannot remove a wood
-            if ($move[0] == TILETYPE_WOOD)
+            if ($tileTypeId == TILETYPE_WOOD)
                 throw new Exception('Cannot remove wood tile');
 
-            // TODO: only allowed to remove a certain type of tile?
-            // TODO: is it valid to remove this tile? (e.g. all parts of tree are still connected to the base)
-            
-            // TODO: Remove the tile
-
-            $tileTypeId = 0; // TODO
+            // Remove the tile
+            $this->data->players->$playerId->played = array_values(array_filter($this->data->players->$playerId->played, fn($move) => $move[1] != $x || $move[2] != $y));
 
             $score = $this->getPlayerScore($playerId)['total'];
             $this->events->onTileRemoved($playerId, $tileTypeId, $x, $y, $score);
@@ -455,8 +530,10 @@ class BonsaiLogic
     // Meditation Methods
     //
 
-    function meditate($drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
+    function meditate($removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
     {
+        $this->removeTile($removeTile);
+
         $index = 0;
         $canPlay = (object)[];
         $this->drawCardAndTiles($drawCardId, $woodOrLeaf, $masterTiles, $canPlay, $index);
@@ -621,7 +698,7 @@ class BonsaiLogic
         $this->data->board[$slot] = null;
     }
 
-    public function revealCard()
+    function revealCard()
     {
         //
         // Shift the other cards to the right and draw the next card
@@ -828,7 +905,7 @@ class BonsaiLogic
     public function getNeighbours($playerId, $x, $y) {
         $player = $this->data->players->$playerId;
 
-        $result = [];
+        $result = (object)[];
         $adjacentCoords = BonsaiLogic::getAdjacentKeys(BonsaiLogic::makeKey($x, $y));
 
         foreach ($adjacentCoords as $direction => $key)
@@ -837,7 +914,7 @@ class BonsaiLogic
             $neighbors = array_values(array_filter($player->played, fn($move) => $coords[0] == $move[1] && $coords[1] == $move[2]));
             $neighbor = array_shift($neighbors);
             if ($neighbor)
-                $result['_' . strval($direction)] = $neighbor; // Stupid hack because PHP messes up when the key is "0"
+                $result->$direction = $neighbor;
         }
         return $result;
     }
@@ -848,6 +925,9 @@ class BonsaiLogic
         $x = $tile['x'];
         $y = $tile['y'];
         $rotation = $tile['r'];
+
+        if ($this->doesTileExist($playerId, $x, $y))
+            throw new Exception('Tile already exists there');
 
         $adjacentNodes = $this->getNeighbours($playerId, $x, $y);
 
@@ -878,12 +958,12 @@ class BonsaiLogic
         // Fruit must be placed adjacent to two adjacent Leaf tiles but not adjacent to another fruit
         else if ($tileType === TILETYPE_FRUIT)
         {
-            if (count(array_filter($adjacentNodes, fn($move) => $move[0] == TILETYPE_FRUIT)))
+            if (count(array_filter((array)$adjacentNodes, fn($move) => $move[0] == TILETYPE_FRUIT)))
                 throw new Exception('Fruit may not be adjacent to fruit');
 
-            $adjKeys = array_keys($adjacentNodes);
+            $adjKeys = array_keys((array)$adjacentNodes);
             $lastDir = array_pop($adjKeys);
-            $prevWasLeaf = $adjacentNodes[$lastDir][0] == TILETYPE_LEAF;
+            $prevWasLeaf = $adjacentNodes->$lastDir[0] == TILETYPE_LEAF;
             foreach ($adjacentNodes as $dir => $node)
             {
                 if ($node[0] == TILETYPE_LEAF)

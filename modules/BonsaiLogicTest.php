@@ -53,14 +53,14 @@ final class BonsaiLogicTest extends TestCase
             $events
         );
         $playerId = 2393715;
-        $removeTiles = [];
+        $removeTile = null;
         $placeTiles = [
             [ 'type' => 1, 'x' => 0, 'y' => 1, 'r' => 0 ],
         ];
         $renounceGoals = [];
         $claimGoals = [];
 
-        $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+        $bonsai->cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals);
 
         $this->assertTrue(true);
     }
@@ -71,7 +71,7 @@ final class BonsaiLogicTest extends TestCase
             '{"board":[29,21,35,30],"order":[2393715,2393716],"options":{"goals":false,"tokonoma":false},"players":{"2393715":{"color":0,"faceUp":[],"played":[[1,0,0,0],[1,0,1,0]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[],"mirrored":false,"inventory":{"leaf":0,"wood":0,"fruit":0,"flower":0},"renounced":[]},"2393716":{"color":1,"faceUp":[],"played":[[1,0,0,0]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[],"mirrored":false,"inventory":{"leaf":1,"wood":1,"fruit":0,"flower":0},"renounced":[]}},"v":2,"drawPile":[42,36,34,43,23,8,39,12,7,11,44,24,1,40,22,2,15,3,46,37,16,19,32,38,18,45,41,47],"goalTiles":[],"nextPlayer":1}'
         );
         $playerId = 2393716;
-        $removeTiles = [];
+        $removeTile = null;
         $placeTiles = [
             [ 'type' => 1, 'x' => 1, 'y' => 1, 'r' => 0 ],
             [ 'type' => 2, 'x' => 0, 'y' => 2, 'r' => 5 ],
@@ -79,7 +79,7 @@ final class BonsaiLogicTest extends TestCase
         $renounceGoals = [];
         $claimGoals = [];
 
-        $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+        $bonsai->cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals);
 
         $this->assertTrue(true);
     }
@@ -100,7 +100,7 @@ final class BonsaiLogicTest extends TestCase
         $claim = [];
         $discardTiles = [];
 
-        $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+        $bonsai->meditate(null, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
 
         $this->assertTrue(true);
     }
@@ -121,7 +121,7 @@ final class BonsaiLogicTest extends TestCase
         $claim = [ 6 ];
         $discardTiles = [];
 
-        $bonsai->meditate($drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
+        $bonsai->meditate(null, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
 
         $this->assertTrue(true);
     }
@@ -213,9 +213,9 @@ final class BonsaiLogicTest extends TestCase
             }'
         );
 
-        $tiles = []; // TODO
+        $tile = null; // TODO
 
-        $bonsai->removeTiles($tiles);
+        $bonsai->removeTile($tile);
 
         $this->assertTrue(true);
     }
@@ -235,7 +235,7 @@ final class BonsaiLogicTest extends TestCase
         );
 
         $playerId = 2393715;
-        $removeTiles = [];
+        $removeTile = null;
         $placeTiles = [
             [ 'type' => 1, 'x' => 3, 'y' => 1, 'r' => 0 ],
             [ 'type' => 2, 'x' => 3, 'y' => 2, 'r' => 0 ],
@@ -244,7 +244,7 @@ final class BonsaiLogicTest extends TestCase
         ];
         $renounceGoals = [ 13 ];
         $claimGoals = [];
-        $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+        $bonsai->cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals);
 
         $this->assertTrue(true);
     }
@@ -267,7 +267,7 @@ final class BonsaiLogicTest extends TestCase
         $claimGoals = [];
         $discardTiles = [];
 
-        $bonsai->meditate($cardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
+        $bonsai->meditate(null, $cardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
 
         $this->assertTrue(true);
     }
@@ -281,7 +281,7 @@ final class BonsaiLogicTest extends TestCase
             '{"v":2,"move":17,"board":[41,32,3,15],"order":[683709],"options":{"solo":1,"goals":true,"tokonoma":false},"players":{"683709":{"color":0,"faceUp":[8,2,16,18],"played":[[1,0,0,0],[1,0,1,0],[1,-1,1,0],[1,-2,1,0],[1,-3,0,0],[2,-4,0,4],[1,-2,-1,0],[2,-3,-2,3],[1,1,1,0],[1,2,1,0],[3,-2,-3,2],[3,-4,-2,4],[1,3,1,0],[1,4,1,0],[2,-3,2,5],[3,-5,0,4],[3,-4,2,4],[2,3,2,5],[3,-2,3,0],[2,4,2,0],[2,2,2,5],[2,-3,-1,3],[4,-4,-1,4]],"canPlay":{"leaf":1,"wild":1,"wood":2,"fruit":1,"flower":1},"claimed":[1,15,12],"capacity":7,"faceDown":[35,39,34,38,23,30,43,46],"mirrored":false,"inventory":{"leaf":0,"wood":0,"fruit":2,"flower":0},"renounced":[13,10]}},"version":2,"drawPile":[],"goalTiles":[3,10,13],"finalTurns":1,"nextPlayer":0}'
         );
 
-        $bonsai->meditate($cardId, 0, [], [], [], [], []);
+        $bonsai->meditate(null, $cardId, 0, [], [], [], [], []);
 
         $this->assertTrue(true);
     }
@@ -302,7 +302,7 @@ final class BonsaiLogicTest extends TestCase
             '{"v":2,"move":18,"board":[null,40,1,3],"order":[84162790],"options":{"solo":1,"goals":true,"tokonoma":false},"players":{"84162790":{"color":0,"faceUp":[15,11,7],"played":[[1,0,0,0],[1,0,1,0],[1,-1,1,0],[2,-2,2,5],[1,-2,1,0],[3,-2,3,5],[1,-3,0,0],[2,-1,2,5],[2,0,2,0],[4,0,3,0],[2,-3,2,5],[2,-3,1,4],[4,-4,2,5],[3,-4,0,3],[1,1,1,0],[2,1,2,0],[3,2,3,0],[1,2,1,0],[2,2,2,0],[1,3,1,0],[2,3,2,0],[4,3,3,0],[3,4,3,0],[1,-2,-1,0]],"canPlay":{"leaf":2,"wild":1,"wood":2,"fruit":0,"flower":1},"claimed":[],"capacity":5,"faceDown":[34,35,39,30,42,24,45,41,37],"mirrored":false,"inventory":{"leaf":0,"wood":1,"fruit":1,"flower":1},"renounced":[4,13]}},"drawPile":[],"goalTiles":[4,6,10,12,13,15],"finalTurns":1,"nextPlayer":0}'
         );
         
-        $bonsai->meditate($cardId, $woodOrLeaf, $masterTiles, $placed, $renounced, $claimed, $discardTiles);
+        $bonsai->meditate(null, $cardId, $woodOrLeaf, $masterTiles, $placed, $renounced, $claimed, $discardTiles);
 
         $this->assertTrue(true);
     }
@@ -317,7 +317,7 @@ final class BonsaiLogicTest extends TestCase
         );
 
         $playerId = 2393716;
-        $removeTiles = [];
+        $removeTile = null;
         $placeTiles = [
             [ 'type' => 1, 'x' => 1, 'y' => 1, 'r' => 0 ],
             [ 'type' => 1, 'x' => 2, 'y' => 1, 'r' => 0 ],
@@ -325,7 +325,31 @@ final class BonsaiLogicTest extends TestCase
         ];
         $renounceGoals = [];
         $claimGoals = [];
-        $bonsai->cultivate($removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+        $bonsai->cultivate($removeTile, $placeTiles, $renounceGoals, $claimGoals);
+
+        $this->assertTrue(true);
+    }
+
+    public function testRemoveTilesAndMeditate()
+    {
+        $bonsai = $this->bonsaiFromJson(
+            '{"v":2,"move":18,"board":[37,47,16,8],"order":[2393716,2393715],"options":{"goals":true,"tokonoma":false},"players":{
+                "2393715":{"color":1,"faceUp":[3],"played":[[1,0,0,0],[2,0,1,5],[3,0,2,0],[1,1,1,0],[2,1,2,0],[2,2,1,1],[3,1,3,5],[4,2,2,1]],"canPlay":{"leaf":1,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":7,"faceDown":[30,44,23,34],"mirrored":false,"inventory":{"leaf":1,"wood":3,"fruit":0,"flower":0},"renounced":[]},
+                "2393716":{"color":0,"faceUp":[1,12,15],"played":[[1,0,0,0],[3,1,1,1],[2,0,1,5],[3,-1,2,5],[3,-1,1,4]],"canPlay":{"leaf":2,"wild":1,"wood":1,"fruit":0,"flower":1},"claimed":[],"capacity":7,"faceDown":[42,38,22],"mirrored":false,"inventory":{"leaf":0,"wood":3,"fruit":1,"flower":0},"renounced":[]}
+            },"drawPile":[29,11,32,45,2,40,36,18,7,35,43,46,19,41,39,21,24],"goalTiles":[1,3,4,6,13,15],"finalTurns":null,"nextPlayer":1}'
+        );
+
+        $playerId = 2393715;
+        $remove = [ 'x' => 0, 'y' => 1 ];
+        $cardId = 16;
+        $woodOrLeaf = 0;
+        $masterTiles = [];
+        $placeTiles = [];
+        $renounceGoals = [];
+        $claimGoals = [];
+        $discardTiles = [];
+
+        $bonsai->meditate($remove, $cardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
 
         $this->assertTrue(true);
     }

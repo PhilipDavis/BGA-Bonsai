@@ -24,7 +24,7 @@ function (
     { install, formatBlock, __, createFromTemplate, stringFromTemplate, invokeServerActionAsync },
     { delayAsync, transitionStyleAsync, WorkflowManager, ActionStack, SetClientState, UndoLastAction, reflow },
     { BonsaiLogic, Cards, CardType, ResourceType, ColorNames, makeKey, parseKey, Goals, GoalStatus, TileType, TileTypeName, SoloPointsRequired },
-    { PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction },
+    { PlaceTileAction, TakeCardAction, ReceiveTilesAction, RenounceGoalAction, ClaimGoalAction, DiscardExcessTileAction, RemoveTilesAction },
 ) {
     const BgaGameId = 'bonsai';
 
@@ -623,6 +623,7 @@ function (
                 TYPE: tileType,
                 X_EM: xEm,
                 Y_EM: yEm,
+                R: r,
                 DEG: Number(r) * 60,
             }, `bon_tree-${playerId}`);
             const tileDiv = document.getElementById(`bon_tile-${playerId}-${x}-${y}`);
@@ -845,10 +846,21 @@ function (
             
             switch(stateName)
             {
+                case 'client_playerTurn': // Used after the player has removed a tile
+                    this.destroyAllVacancies();
+                    this.updateLegalMoves();
+                    this.makeTilesSelectable({ onlyLegal: true });
+                    break;
+        
                 case 'playerTurn':
                     bonsai.startTurn();
                     this.destroyAllVacancies();
                     this.makeTilesSelectable({ onlyLegal: true });
+                    this.makeRemovalsSelectable();
+                    break;
+
+                case 'client_prune':
+                    this.makeTilesUnselectable();
                     break;
 
                 case 'client_meditate':
@@ -880,12 +892,18 @@ function (
             console.log(`onUpdateActionButtons: ${stateName}`, args);
 
             if (!this.isCurrentPlayerActive()) return;
-            const playerId = this.getActivePlayerId();
 
             switch (stateName)
             {
+                case 'client_playerTurn':
                 case 'playerTurn':
                     this.updateLegalMoves();
+                    if (this.makeRemovalsSelectable()) {
+                        this.addActionButton('bon_button-prune', _('Remove Tiles'), () => this.onClickRemoveTiles(), null, false, 'gray');
+                    }
+                    else if (this.actionStack.canUndo()) {
+                        this.addActionButton('bon_button-remove-undo', _('Undo'), () => this.onClickUndo());
+                    }
                     this.addActionButton('bon_button-meditate', _('Meditate (Draw a Card)'), () => this.onClickMeditate());
                     this.addActionButton('bon_button-cultivate', _('Cultivate (Place Tiles)'), () => this.onClickCultivate()); 
                     if (!this.clientStateArgs.hasLegalMoves) {
@@ -893,6 +911,10 @@ function (
                     }
                     break;
                 
+                case 'client_prune':
+                    this.addActionButton(`bon_button-prune-cancel`, _('Cancel'), () => this.onClickCancel(), null, false, 'red'); 
+                    break;
+
                 case 'client_selectInventoryTile':
                     if (this.clientStateArgs.alreadyPlaced) {
                         if (this.actionStack.canUndo()) {
@@ -1098,6 +1120,19 @@ function (
             for (const div of divs) {
                 div.classList.remove('bon_selectable');
             }
+        },
+
+        makeRemovalsSelectable() {
+            const legalRemoves = bonsai.getLegalRemoves();
+            this.clientStateArgs.legalRemoves = legalRemoves;
+            this.clientStateArgs.hasLegalRemoves = legalRemoves.length > 0;
+
+            for (const removal of legalRemoves) {
+                const [ leafKey /*, ...otherKeys */ ] = removal;
+                const { x, y } = parseKey(leafKey);
+                this.createVacancy(this.myPlayerId, x, y);
+            }
+            return legalRemoves.length > 0;
         },
 
         updateLegalMoves() {
@@ -1371,13 +1406,14 @@ function (
         async onClickVacancy(e) {
             if (!this.isCurrentPlayerActive()) return;
             e.stopPropagation();
-            if (!this.checkAction('cultivate')) return;
             if (this.isClientLocked()) return;
 
             const { x, y } = e.currentTarget.dataset;
             console.log(`onClickVacancy(${x}, ${y})`);
 
-            await this.workflowManager.advanceAsync({
+            // If a workflow is in progress, it's the Cultivate workflow
+            // Otherwise, the vacancy is for tile removal
+            await this.workflowManager.advanceOrBeginAsync(this.removeTilesWorkflow({ skipSelectPrompt: true }), {
                 locX: parseInt(x, 10),
                 locY: parseInt(y, 10),
             });
@@ -1406,7 +1442,18 @@ function (
         async onClickUndo() {
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickUndo()');
-            await this.workflowManager.advanceAsync({ undo: true });
+
+            if (this.workflowManager.isRunning) {
+                await this.workflowManager.advanceAsync({ undo: true });
+            }
+            else {
+                // Undo the removal of tiles
+                await this.actionStack.undoAllAsync();
+                this.resetClientStateArgs();
+                this.makeTilesUnselectable();
+                this.destroyAllVacancies();
+                this.restoreServerGameState();
+            }
         },
 
         //
@@ -1452,7 +1499,7 @@ function (
         },
 
         * cultivateWorkflow({ skipSelectPrompt = false } = {}) {
-            // TODO: check to see if there are no possible moves (allow player to remove a tile... see rule book)
+            this.destroyAllVacancies();
 
             delete this.clientStateArgs.placeAnother;
             delete this.clientStateArgs.alreadyPlaced;
@@ -1490,11 +1537,40 @@ function (
             }
         },
 
+        * removeTilesWorkflow({ skipSelectPrompt = false } = {}) {
+            while (true) {
+                this.makeRemovalsSelectable();
+                if (!skipSelectPrompt) {
+                    yield new SetClientState('client_prune', _('${you} must select a tile to remove'));
+                }
+                skipSelectPrompt = false;
+
+                this.destroyAllVacancies();
+
+                if (this.clientStateArgs.canceled) return false;
+                if (this.clientStateArgs.undo) {
+                    yield new UndoLastAction();
+                    continue;
+                }
+
+                const { locX, locY } = this.clientStateArgs;
+                const leafKey = makeKey(locX, locY);
+                const removeTileKeys = this.clientStateArgs.legalRemoves.find(set => set[0] === leafKey);
+                const removeTiles = removeTileKeys.map(parseKey);
+
+                yield new RemoveTilesAction(this.myPlayerId, removeTiles);
+                break;
+            }
+
+            return new SetClientState('client_playerTurn', _('${you} must choose'));
+        },
+
         * meditateWorkflow({ skipSelectPrompt = false } = {}) {
             if (!skipSelectPrompt) {
                 yield new SetClientState('client_meditate', _('${you} must select a card'));
             }
             this.makeTilesUnselectable();
+            this.destroyAllVacancies();
 
             const { slot, cardId } = this.clientStateArgs;
             yield new TakeCardAction(this.myPlayerId, cardId, slot);
@@ -1735,6 +1811,13 @@ function (
             }
         },
 
+        async onClickRemoveTiles() {
+            if (!this.isCurrentPlayerActive()) return;
+            console.log(`onClickRemoveTiles()`);
+
+            await this.workflowManager.beginAsync(this.removeTilesWorkflow());
+        },
+
         async onClickMeditate() {
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('meditate')) return;
@@ -1746,7 +1829,7 @@ function (
         async onClickSlot(slot) {
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('meditate')) return;
-            if (this.currentState !== 'playerTurn' && this.currentState != 'client_meditate') return;
+            if (this.currentState !== 'playerTurn' && this.currentState !== 'client_playerTurn' && this.currentState != 'client_meditate') return;
 
             const cardId = bonsai.board[slot];
             if (!cardId) return; // E.g. the slot is empty... either mid-animation or no cards left
@@ -1775,6 +1858,7 @@ function (
 
             const data = this.actionStack.apply();
             let {
+                remove,
                 discard,
                 take: card,
                 bonusTiles,
@@ -1787,12 +1871,13 @@ function (
             // TODO: clean this up -- also, check the action parameter types... e.g. array vs numberlist
             //const discard = data.discard.join(',');
             const choice = bonusTiles?.shift();
+            remove = remove && [ remove ].flatMap(g => g).join();
             place = place?.flatMap(m => m).join();
             discard = discard && [ discard ].flatMap(d => d).join();
             renounce = renounce && [ renounce ].flatMap(g => g).join();
             claim = claim && [ claim ].flatMap(g => g).join();
             try {
-                await invokeServerActionAsync('meditate', { card, choice, master, place, renounce, claim, discard });
+                await invokeServerActionAsync('meditate', { remove, card, choice, master, place, renounce, claim, discard });
             }
             catch (err) {
                 return;
@@ -1819,10 +1904,7 @@ function (
 
         async notify_tileRemoved({ playerId, x, y, score }) {
             if (playerId != this.myPlayerId || g_archive_mode) {
-                bonsai.removeTile(playerId, x, y);
-
-                // TODO: remove the tile from the UI
-                // TODO: await RemoveTileAction(playerId, x, y).doAsync();
+                await new RemoveTilesAction(playerId, [ { x, y } ]).doAsync();
             }
             
             // Update player score

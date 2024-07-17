@@ -96,6 +96,10 @@ define([], () => {
             this.actionStack = actionStack;
         }
 
+        get isRunning() {
+            return !!this.workflow;
+        }
+
         //
         // Start a new workflow
         //
@@ -147,16 +151,10 @@ define([], () => {
             //
             // Iterate through workflow logic until input is required from the player.
             //
-            while (this.workflow) {
+            let requiresUserInput = false;
+            while (this.workflow && !requiresUserInput) {
                 const { value, done } = this.workflow.next();
-                if (done) {
-                    this.workflow = null;
-                    if (value === false) {
-                        // Undo everything and revert to clean server state if a workflow returns false.
-                        await this.abortAsync();
-                    }
-                    break;
-                }
+
                 if (value instanceof Action) {
                     await this.actionStack.doAsync(value);
                 }
@@ -166,10 +164,19 @@ define([], () => {
                         descriptionmyturn: description,
                         args,
                     });
-                    break;
+                    requiresUserInput = true;
                 }
                 else if (value instanceof UndoLastAction) {
                     await this.actionStack.undoAsync();
+                }
+
+                if (done) {
+                    this.workflow = null;
+                    if (value === false) {
+                        // Undo everything and revert to clean server state if a workflow returns false.
+                        await this.abortAsync();
+                    }
+                    break;
                 }
             }
 

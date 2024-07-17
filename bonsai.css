@@ -242,6 +242,7 @@
     position: absolute;
 }
 .bon_state-playerTurn .bon_slot:has(.bon_card),
+.bon_state-client_playerTurn .bon_slot:has(.bon_card),
 .bon_state-client_meditate .bon_slot:has(.bon_card) {
     cursor: pointer;
 }
@@ -259,6 +260,7 @@
 }
 
 .bon_state-playerTurn .bon_slot:has(.bon_card)::after,
+.bon_state-client_playerTurn .bon_slot:has(.bon_card)::after,
 .bon_state-client_meditate .bon_slot:has(.bon_card)::after {
     display: inline-block;
     position: absolute;
@@ -272,6 +274,7 @@
     pointer-events: none;
 }
 .bon_state-playerTurn .bon_slot:has(.bon_card):hover::after,
+.bon_state-client_playerTurn .bon_slot:has(.bon_card):hover::after,
 .bon_state-client_meditate .bon_slot:has(.bon_card):hover::after {
     background-color: rgba(255, 255, 255, .2);
 }
@@ -577,6 +580,7 @@
     left: 50%;
     top: 50%;
     position: absolute;
+    z-index: 1;
 }
 .bon_vacancy path:hover {
     cursor: pointer;

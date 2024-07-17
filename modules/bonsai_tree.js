@@ -175,6 +175,9 @@ define([], () => {
             // We already show only legal moves in the UI and the server
             // also validates legality of moves.
             const key = makeKey(x, y);
+            if (this.nodes[key]) {
+                throw new Error(`Tile already exists at (${x}, ${y})`);
+            }
             this.nodes[key] = new Node(tileType, x, y, r);
         }
 

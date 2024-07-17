@@ -141,6 +141,7 @@ const bonsai_Templates = {
         '<div id="bon_tile-${TILE_ID}" ' +
             'class="bon_tile bon_tile-${TYPE}" ' +
             'data-type="${TYPE}" ' +
+            'data-r="${R}" ' +
             'style="transform: translate(calc(${X_EM}em - 50%), calc(${Y_EM}em - 50%)) scale(.975) rotate(${DEG}deg)"' +
         '></div>',
 
