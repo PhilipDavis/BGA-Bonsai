@@ -844,9 +844,7 @@ define([
             // Calculate goals
             let goalScore = 0;
             for (const goalId of player.claimed) {
-                if (this.doesPlayerQualifyForGoal(this.myPlayerId, goalId)) {
-                    goalScore += Goals[goalId].points;
-                }
+                goalScore += Goals[goalId].points;
             }
     
             //
