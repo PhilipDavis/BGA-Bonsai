@@ -1623,7 +1623,7 @@ function (
                     receivedTileTypes[0] = this.clientStateArgs.tileType;
                 }
 
-                yield new ReceiveTilesAction(this.myPlayerId, receivedTileTypes, slot, 'masterCardTiles', userChoice);
+                yield new ReceiveTilesAction(this.myPlayerId, receivedTileTypes, slot, 'master', userChoice);
             }
             else if (type === CardType.Helper) {
                 while (true) {
@@ -1897,7 +1897,7 @@ function (
                 discard,
                 take: card,
                 bonusTiles,
-                masterCardTiles: master,
+                master, // 'wild' choice the user made for a Master card
                 place,
                 renounce,
                 claim,
