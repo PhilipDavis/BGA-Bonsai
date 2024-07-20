@@ -1499,9 +1499,16 @@ function (
             renounce = renounce && [ renounce ].flatMap(g => g).join();
             claim = claim && [ claim ].flatMap(g => g).join();
             try {
-                await invokeServerActionAsync('cultivate', { flip, remove, place, renounce, claim });
+                // Report what we think the current move is because I'm seeing
+                // what looks like multiple requests for a card that has already
+                // been taken by the active player. ...but these don't look like
+                // automatic retries.
+                const m = bonsai.data.move;
+                await invokeServerActionAsync('cultivate', { m, flip, remove, place, renounce, claim });
             }
             catch (err) {
+                await this.workflowManager.abortAsync();
+                this.resetClientStateArgs();
                 return;
             }
             await this.workflowManager.advanceAsync();
@@ -1905,9 +1912,16 @@ function (
             renounce = renounce && [ renounce ].flatMap(g => g).join();
             claim = claim && [ claim ].flatMap(g => g).join();
             try {
-                await invokeServerActionAsync('meditate', { flip, remove, card, choice, master, place, renounce, claim, discard });
+                // Report what we think the current move is because I'm seeing
+                // what looks like multiple requests for a card that has already
+                // been taken by the active player. ...but these don't look like
+                // automatic retries.
+                const m = bonsai.data.move;
+                await invokeServerActionAsync('meditate', { m, flip, remove, card, choice, master, place, renounce, claim, discard });
             }
             catch (err) {
+                await this.workflowManager.abortAsync();
+                this.resetClientStateArgs();
                 return;
             }
             await this.workflowManager.advanceAsync();
