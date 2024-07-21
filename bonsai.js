@@ -188,6 +188,8 @@ function (
             });
             const surfaceDiv = document.getElementById('bon_surface');
             this.resizeObserver.observe(surfaceDiv);
+
+            this.bThisGameSupportsFastReplay = true;
         },
 
         setupPlayer(playerId, player, score, isGameOver) {
@@ -819,7 +821,8 @@ function (
             const rightOverflow = Math.round(Math.max(0, (x2 * tileWidth + hPadding / 2) - rect.width / 2));
 
             const treeDiv = document.getElementById(`bon_tree-${playerId}`);
-            await transitionStyleAsync(treeDiv, style => {
+
+            function setStyle(style) {
                 style.transform = `scale(${scale})`;
     
                 // Shift the pot upwards if the tree grows below the pot
@@ -831,7 +834,14 @@ function (
                 else {
                     style.left = '50%';
                 }
-            });
+            }
+
+            if (gameui.instantaneousMode) {
+                setStyle(treeDiv.style);
+            }
+            else {
+                await transitionStyleAsync(treeDiv, setStyle);
+            }
         },
 
 
@@ -1177,7 +1187,9 @@ function (
         },
 
         async animateCardToNextSlotAsync(delay, toSlot, cardId) {
-            await delayAsync(delay);
+            if (!gameui.instantaneousMode) {
+                await delayAsync(delay);
+            }
             const divId = `bon_card-${cardId}`;
             const destDivId = `bon_slot-${toSlot}`;
             this.raiseElementToBody(divId);
@@ -1189,14 +1201,16 @@ function (
             const divId = `bon_card-${cardId}`;
             const div = document.getElementById(divId);
 
-            await div.animate({
-                top: [ 0, '-100%' ],
-                opacity: [ 1, 0 ],
-            }, {
-                duration: 400,
-                easing: 'ease-out',
-                fill: 'forwards',
-            }).finished;
+            if (!gameui.instantaneousMode) {
+                await div.animate({
+                    top: [ 0, '-100%' ],
+                    opacity: [ 1, 0 ],
+                }, {
+                    duration: 400,
+                    easing: 'ease-out',
+                    fill: 'forwards',
+                }).finished;
+            }
 
             div.parentElement.removeChild(div);
         },
@@ -1225,7 +1239,9 @@ function (
 
                 promises.push((async () => {
                     // Wait for the other cards to have started their animations
-                    await delayAsync(slot * 100);
+                    if (!gameui.instantaneousMode) {
+                        await delayAsync(slot * 100);
+                    }
 
                     // Change the height of the deck, if necessary
                     this.updateDeck();
@@ -1256,7 +1272,9 @@ function (
 
                     // Start flipping the card over
                     const flipPromise = new Promise(async resolve => {
-                        await delayAsync(50);
+                        if (!gameui.instantaneousMode) {
+                            await delayAsync(50);
+                        }
                         cardDiv.classList.remove('bon_card-face-down');
                         cardDiv.addEventListener('transitionend', resolve, { once: true });
                     });
@@ -2072,7 +2090,7 @@ function (
                     await this.revealFaceDownCardsAsync(playerId, cardIds);
                 }),
             );
-            await this.animateFinalScoresAsync(scores);
+            await this.animateFinalScoresAsync(scores, !gameui.instantaneousMode);
         },
     });
 });

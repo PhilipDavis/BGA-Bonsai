@@ -106,20 +106,20 @@ class PlaceTileAction extends Action {
         const placeholderDiv = gameui.replaceInventoryTileWithPlaceholder(tileDiv);
         const destDiv = gameui.createTileInTree(this.playerId, this.tileType, this.x, this.y, this.r, false);
 
-        const srcRect = tileDiv.getBoundingClientRect();
-        const destRect = destDiv.getBoundingClientRect();
-        const srcMidX = Math.round(srcRect.left + srcRect.width / 2);
-        const srcMidY = Math.round(srcRect.top + srcRect.height / 2);
-        const destMidX = Math.round(destRect.left + destRect.width / 2);
-        const destMidY = Math.round(destRect.top + destRect.height / 2);
-        const deltaX = destMidX - srcMidX;
-        const deltaY = destMidY - srcMidY;
-
-        destDiv.style.transform = `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`;
-        destDiv.classList.remove('bon_hidden');
-        placeholderDiv.innerHTML = '';
-
         if (!gameui.instantaneousMode) {
+            const srcRect = tileDiv.getBoundingClientRect();
+            const destRect = destDiv.getBoundingClientRect();
+            const srcMidX = Math.round(srcRect.left + srcRect.width / 2);
+            const srcMidY = Math.round(srcRect.top + srcRect.height / 2);
+            const destMidX = Math.round(destRect.left + destRect.width / 2);
+            const destMidY = Math.round(destRect.top + destRect.height / 2);
+            const deltaX = destMidX - srcMidX;
+            const deltaY = destMidY - srcMidY;
+
+            destDiv.style.transform = `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`;
+            destDiv.classList.remove('bon_hidden');
+            placeholderDiv.innerHTML = '';
+
             const slidePromise = destDiv.animate({
                 transform: [
                     `translate(calc(${xEm}em - ${deltaX}px - 50%), calc(${yEm}em - ${deltaY}px - 50%)) scale(.975) rotate(0deg)`,
