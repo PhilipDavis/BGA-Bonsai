@@ -437,6 +437,7 @@ class BonsaiLogic
 
         foreach ($placeTiles as $tile)
         {
+            $tile = (array)$tile; // Only required to make the exception-log-generated unit tests happy
             $type = $tile['type'];
             $x = $tile['x'];
             $y = $tile['y'];

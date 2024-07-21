@@ -229,14 +229,27 @@ class Bonsai extends Table implements BonsaiEvents
         catch (Throwable $e)
         {
             $refId = uniqid();
-            $this->error(implode(', ', [
-                'Ref #' . $refId . ': cultivate failed',
-                'player: ' . $activePlayerId,
-                'inputs: ' . json_encode([ $flip, $removeTile, $placeTiles, $renounceGoals, $claimGoals ]),
-                'state: ' . $stateBefore,
-                'ex:' . $e,
-            ]));
-            throw new BgaVisibleSystemException("Invalid operation - Ref #" . $refId); // NOI18N
+            $test = implode(' ', [
+                '/***** Exception: ' . $e->getMessage() . ' *****/',
+                'public function testCultivateRef' . $refId . '() {',
+                '    $bonsai = $this->bonsaiFromJson(',
+                '        \'' . $stateBefore . '\'',
+                '    );',
+                '    $playerId = ' . $activePlayerId . ';',
+                '    $i = json_decode(\'' . json_encode([
+                        'flip' => $flip,
+                        'remove' => $removeTile,
+                        'place' => $placeTiles,
+                        'renounce' => $renounceGoals,
+                        'claim' => $claimGoals,
+                    ]) . '\');',
+                '    $bonsai->cultivate($i->flip, $i->remove, $i->place, $i->renounce, $i->claim);',
+                '    $this->assertTrue(true);',
+                '}',
+                '/*' . '**********/',
+            ]);
+            $this->error($test);
+            throw new BgaVisibleSystemException("Invalid operation; please reload - Ref #" . $refId);
         }
 
         $this->saveGameState($bonsai);
@@ -350,14 +363,31 @@ class Bonsai extends Table implements BonsaiEvents
         catch (Throwable $e)
         {
             $refId = uniqid();
-            $this->error(implode(', ', [
-                'Ref #' . $refId . ': meditate failed',
-                'player: ' . $activePlayerId,
-                'inputs: ' . json_encode([ $flip, $removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles ]),
-                'state: ' . $stateBefore,
-                'ex:' . $e,
-            ]));
-            throw new BgaVisibleSystemException("Invalid operation - Ref #" . $refId); // NOI18N
+            $test = implode(' ', [
+                '/***** Exception: ' . $e->getMessage() . ' *****/',
+                'public function testMeditateRef' . $refId . '() {',
+                '    $bonsai = $this->bonsaiFromJson(',
+                '        \'' . $stateBefore . '\'',
+                '    );',
+                '    $playerId = ' . $activePlayerId . ';',
+                '    $i = json_decode(\'' . json_encode([
+                        'flip' => $flip,
+                        'remove' => $removeTile,
+                        'card' => $drawCardId,
+                        'choice' => $woodOrLeaf,
+                        'master' => $masterTiles,
+                        'place' => $place,
+                        'renounce' => $renounce,
+                        'claim' => $claim,
+                        'discard' => $discardTiles, 
+                    ]) . '\');',
+                '    $bonsai->meditate($i->flip, $i->remove, $i->card, $i->choice, $i->master, $i->place, $i->renounce, $i->claim, $i->discard);',
+                '    $this->assertTrue(true);',
+                '}',
+                '/*' . '**********/',
+            ]);
+            $this->error($test);
+            throw new BgaVisibleSystemException("Invalid operation; please reload - Ref #" . $refId);
         }
 
         $this->saveGameState($bonsai);
