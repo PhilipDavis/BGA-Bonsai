@@ -1,6 +1,8 @@
 // © Copyright 2024, Philip Davis (mrphilipadavis AT gmail)
 
-define([], function () {
+define([
+    "bgagame/modules/md5",
+], function(md5) {
     const config = {
         gameName: '', // Leave this blank. Value assigned in install() method.
         gameRootId: '', // The element ID of the root game DOM tree. This gets mounted into #game_play_area
@@ -8,6 +10,7 @@ define([], function () {
     const data = {
         nextUniqueId: 1, // Used by stringFromTemplate when replacing ${_UNIQUEID}
         uninstallers: [], // Functions to undo any changes we make to core stuff
+        reportedErrors: {}, // Collection of errors we've reported -- to avoid sending duplicates 
     };
 
     //
@@ -76,6 +79,62 @@ define([], function () {
                 throw err;
             }
         };
+
+        //
+        // Send JavaScript errors caused by the game to a special
+        // game action (the states.inc.php file must allow an
+        // action called 'jsError' in all states). Continue to
+        // send other errors to the default BGA error reporter.
+        //
+        const _ose = gameui.onScriptError;
+        data.uninstallers.push(() => gameui.onScriptError = _ose);
+        gameui.onScriptError = async function onScriptError(msg, url, lineNumber) {
+            if (gameui.page_is_unloading) return;
+            if (data.processingScriptError) return false;
+            try {
+                // Prevent reentry
+                data.processingScriptError = true;
+
+                // Send game errors to the game
+                if ((msg + url).indexOf(config.gameName) >= 0) {
+                    // Don't send duplicate reports in the same game
+                    const hash = md5(`${msg}_${url}_${lineNumber}`);
+                    if (data.reportedErrors[hash]) return;
+                    data.reportedErrors[hash] = true;
+
+                    const args = {
+                        ua: navigator.userAgent,
+                        url,
+                        line: lineNumber,
+                        // Note: the error handler installed by BGA
+                        // ignores the column number... and I was unable
+                        // to get in front of it.
+                        msg,
+                    };
+
+                    // Game must have an action called 'jsError' and must be available
+                    // in all game states. Note: errors during setup() will not have
+                    // a URL or line number due to the way BGA wrote their code.
+                    await new Promise(resolve => {
+                        gameui.ajaxcall(
+                            `${config.gameName}/${config.gameName}/jsError.html`,
+                            { lock: true, ...args },
+                            () => {},
+                            resolve,
+                            undefined,
+                            'post'
+                        );
+                    });
+                    return;
+                }
+
+                // Defer all other errors to BGA default error capture
+                _ose.call(gameui, msg, url, lineNumber);
+            }
+            finally {
+                data.processingScriptError = false;
+            }
+        }
 
         //
         // Add convenience properties

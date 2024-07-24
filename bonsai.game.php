@@ -578,6 +578,18 @@ class Bonsai extends Table implements BonsaiEvents
         ]);
     }
 
+    public function action_jsError($msg, $url, $line, $userAgent)
+    {
+        $this->error(implode(PHP_EOL, [
+            '##### Client Error #####',
+            '- error: ' . $msg,
+            '- url: ' . $url,
+            '- line: ' . $line,
+            '- ua: ' . $userAgent,
+            '########################',
+        ]));
+    }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions

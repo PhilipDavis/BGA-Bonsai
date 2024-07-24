@@ -39,6 +39,7 @@ $machinestates = [
         'possibleactions' => [
             'meditate',
             'cultivate',
+            'jsError',
         ],
         'transitions' => [
             'endTurn' => END_TURN,

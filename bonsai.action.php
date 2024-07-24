@@ -57,7 +57,7 @@ class action_bonsai extends APP_GameAction
 
     public function cultivate()
     {
-        self::setAjaxMode();
+        $this->setAjaxMode();
 
         $flip = self::getArg("flip", AT_num, false, 0);
         $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
@@ -69,12 +69,12 @@ class action_bonsai extends APP_GameAction
 
         $this->game->action_cultivate($flip, $remove, $place, $renounce, $claim);
         
-        self::ajaxResponse();
+        $this->ajaxResponse();
     }
 
     public function meditate()
     {
-        self::setAjaxMode();
+        $this->setAjaxMode();
 
         $flip = self::getArg("flip", AT_num, false, 0);
         $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
@@ -100,6 +100,19 @@ class action_bonsai extends APP_GameAction
 
         $this->game->action_meditate($flip, $remove, $drawCardId, $woodOrLeaf, $masterTiles, $place, $renounce, $claim, $discardTiles);
         
-        self::ajaxResponse();
+        $this->ajaxResponse();
+    }
+
+    public function jsError()
+    {
+        $this->setAjaxMode();
+
+        $userAgent = $_POST['ua'];
+        $url = $_POST['url'];
+        $msg = $_POST['msg'];
+        $line = $_POST['line'];
+        $this->game->action_jsError($msg, $url, $line, $userAgent);
+
+        $this->ajaxResponse();
     }
 }
