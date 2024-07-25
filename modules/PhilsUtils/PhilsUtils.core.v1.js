@@ -417,10 +417,6 @@ define([
                     console.error(`Action '${actionName}' not allowed for inactive player`, args);
                     return reject('Invalid');
                 }
-                if (gameui.ajaxcall_running) {
-                    console.error(`Action '${actionName}' not allowed while another action is already in progres`);
-                    return reject('Action in progress');
-                }
                 if (gameui.instantaneousMode) {
                     console.error(`Action '${actionName}' not allowed in instantaneous mode`, args);
                     return reject('Invalid');
