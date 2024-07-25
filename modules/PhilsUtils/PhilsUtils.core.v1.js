@@ -93,6 +93,19 @@ define([
         // action called 'jsError' in all states). Continue to
         // send other errors to the default BGA error reporter.
         //
+        let __errorAllowance = 3;
+        window.addEventListener('error', e => {
+            if (__errorAllowance-- < 1) return;
+            try {
+                const { error, message, filename, lineno, colno } = e;
+                const stack = (typeof error == 'object' && (error.stack || error.stacktrace)) || 'no stack';
+                const payload = `${message}\n${filename}:${lineno}:${colno}\n${stack}`;
+                gameui.onScriptError(payload, e.filename, `${lineno}:${colno}`);
+            }
+            catch (err) {
+                console.error('Error occurred while submitting an error', err);
+            }
+        });
         const _ose = gameui.onScriptError;
         data.uninstallers.push(() => gameui.onScriptError = _ose);
         gameui.onScriptError = async function onScriptError(msg, url, lineNumber) {
