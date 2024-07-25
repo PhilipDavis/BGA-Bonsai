@@ -2095,8 +2095,8 @@ function (
         },
 
         async notify_cardDiscarded({ cardId }) {
-            const slot = bonsai.discardCard(cardId);
-            await this.animateDiscardCardAsync(cardId, slot);
+            await this.animateDiscardCardAsync(cardId);
+            bonsai.discardCard(cardId);
         },
 
         async notify_endTurn({ playerId, score }) {
