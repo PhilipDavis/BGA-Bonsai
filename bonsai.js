@@ -1521,8 +1521,7 @@ function (
                 // what looks like multiple requests for a card that has already
                 // been taken by the active player. ...but these don't look like
                 // automatic retries.
-                const m = bonsai.data.move;
-                await invokeServerActionAsync('cultivate', { m, flip, remove, place, renounce, claim });
+                await invokeServerActionAsync('cultivate', bonsai.data.move, { flip, remove, place, renounce, claim });
             }
             catch (err) {
                 await this.workflowManager.abortAsync();
@@ -1934,8 +1933,7 @@ function (
                 // what looks like multiple requests for a card that has already
                 // been taken by the active player. ...but these don't look like
                 // automatic retries.
-                const m = bonsai.data.move;
-                await invokeServerActionAsync('meditate', { m, flip, remove, card, choice, master, place, renounce, claim, discard });
+                await invokeServerActionAsync('meditate', bonsai.data.move, { flip, remove, card, choice, master, place, renounce, claim, discard });
             }
             catch (err) {
                 await this.workflowManager.abortAsync();
@@ -1962,14 +1960,32 @@ function (
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
 
-        async notify_potFlipped({ playerId }) {
-            if (playerId == this.myPlayerId && !g_archive_mode) return;
+        shouldShowNotification(playerId, m) {
+            // Always show notifications from other players
+            if (playerId != this.myPlayerId) return true;
 
-            await new FlipPotAction(playerId).doAsync();
+            // If the local state is behind server state
+            // then we need to catch up. This can happen
+            // if the game is open in multiple windows.
+            if (this.lastMoveSent < m) return true;
+
+            // Play all notifications when replaying game
+            if (g_archive_mode) return true;
+
+            // Otherwise, suppress the notification because
+            // the player's UI was already updated before
+            // the call to the server.
+            return false;
         },
 
-        async notify_tileRemoved({ playerId, x, y, score }) {
-            if (playerId != this.myPlayerId || g_archive_mode) {
+        async notify_potFlipped({ playerId, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
+                await new FlipPotAction(playerId).doAsync();
+            }
+        },
+
+        async notify_tileRemoved({ playerId, x, y, score, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
                 await new RemoveTilesAction(playerId, [ { x, y } ]).doAsync();
             }
             
@@ -1978,8 +1994,8 @@ function (
             this.updateSoloPanel();
         },
 
-        async notify_tilesAdded({ playerId, tiles, score }) {
-            if (playerId != this.myPlayerId || g_archive_mode) {
+        async notify_tilesAdded({ playerId, tiles, score, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
                 for (const { type, x, y, r } of tiles) {
                     // Find the first inventory tile of the specified type
                     const tileDiv = document.querySelector(`#bon_tiles-${playerId} .bon_tile-${type}`);
@@ -1993,20 +2009,20 @@ function (
             this.updateSoloPanel();
         },
 
-        async notify_tilesReceived({ playerId, tileType: tileTypes, slot }) {
-            if (playerId == this.myPlayerId && !g_archive_mode) return;
-
-            await new ReceiveTilesAction(playerId, tileTypes, slot, '').doAsync();
+        async notify_tilesReceived({ playerId, tileType: tileTypes, slot, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
+                await new ReceiveTilesAction(playerId, tileTypes, slot, '').doAsync();
+            }
         },
 
-        async notify_goalRenounced({ playerId, goal: goalId }) {
-            if (playerId == this.myPlayerId && !g_archive_mode) return;
-
-            await new RenounceGoalAction(playerId, goalId).doAsync();
+        async notify_goalRenounced({ playerId, goal: goalId, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
+                await new RenounceGoalAction(playerId, goalId).doAsync();
+            }
         },
 
-        async notify_goalClaimed({ playerId, goal: goalId, score }) {
-            if (playerId != this.myPlayerId || g_archive_mode) {
+        async notify_goalClaimed({ playerId, goal: goalId, score, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
                 await new ClaimGoalAction(playerId, goalId).doAsync();
             }
 
@@ -2015,10 +2031,10 @@ function (
             this.updateSoloPanel();
         },
 
-        async notify_cardTaken({ playerId, cardId }) {
+        async notify_cardTaken({ playerId, cardId, m }) {
             // Only act out the actions for other players because
             // this player's UI has already been updated locally.
-            if (playerId != this.myPlayerId || g_archive_mode) {
+            if (this.shouldShowNotification(playerId, m)) {
                 const slot = bonsai.board.indexOf(cardId);
                 await new TakeCardAction(playerId, cardId, slot).doAsync();
             }
@@ -2048,26 +2064,26 @@ function (
             this.restoreServerGameState();
         },
 
-        async notify_tilesDiscarded({ playerId, tileType: tileTypes }) {
-            if (playerId == this.myPlayerId && !g_archive_mode) return;
+        async notify_tilesDiscarded({ playerId, tileType: tileTypes, inventory, m }) {
+            if (this.shouldShowNotification(playerId, m)) {
+                // Fade out the discarded tiles
+                for (const tileType of tileTypes) {
+                    const tileDiv = document.querySelector(`#bon_tiles-${playerId} .bon_tile-${tileType}`);
+                    if (tileDiv) {
+                        // Fade out the tile
+                        await tileDiv.animate({
+                            opacity: [ 1, 0 ],
+                            transform: [ 'scale(1)', 'scale(.5)' ],
+                        }, {
+                            duration: 100,
+                            easing: 'ease-out',
+                            fill: 'forwards',
+                        }).finished;
 
-            // Fade out the discarded tiles
-            for (const tileType of tileTypes) {
-                const tileDiv = document.querySelector(`#bon_tiles-${playerId} .bon_tile-${tileType}`);
-                if (tileDiv) {
-                    // Fade out the tile
-                    await tileDiv.animate({
-                        opacity: [ 1, 0 ],
-                        transform: [ 'scale(1)', 'scale(.5)' ],
-                    }, {
-                        duration: 100,
-                        easing: 'ease-out',
-                        fill: 'forwards',
-                    }).finished;
-
-                    tileDiv.parentElement.removeChild(tileDiv);
+                        tileDiv.parentElement.removeChild(tileDiv);
+                    }
+                    bonsai.adjustPlayerInventory(playerId, tileType, -1);
                 }
-                bonsai.adjustPlayerInventory(playerId, tileType, -1);
             }
         },
 

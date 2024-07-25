@@ -290,7 +290,7 @@ class BonsaiLogic
         $played = $this->data->players->$playerId->played;
         if (count($played) > 1)
             throw new Exception('Too late to flip');
-        $this->events->onPotFlipped($playerId);
+        $this->events->onPotFlipped($this->data->move, $playerId);
         $isFlipped = $played[0][1] == 1; 
         $this->data->players->$playerId->played = [ [ 1, $isFlipped ? 0 : 1, 0, 0 ] ];
     }
@@ -424,7 +424,7 @@ class BonsaiLogic
             $this->data->players->$playerId->played = array_values(array_filter($this->data->players->$playerId->played, fn($move) => $move[1] != $x || $move[2] != $y));
 
             $score = $this->getPlayerScore($playerId)['total'];
-            $this->events->onTileRemoved($playerId, $tileTypeId, $x, $y, $score);
+            $this->events->onTileRemoved($this->data->move, $playerId, $tileTypeId, $x, $y, $score);
         }
     }
 
@@ -469,7 +469,7 @@ class BonsaiLogic
         if (count($placeTiles))
         {
             $score = $this->getPlayerScore($playerId)['total'];
-            $this->events->onTilesAdded($playerId, $placeTiles, $score);
+            $this->events->onTilesAdded($this->data->move, $playerId, $placeTiles, $score);
         }
     }
 
@@ -492,7 +492,7 @@ class BonsaiLogic
             // Mark the goal as renounced
             $this->data->players->$playerId->renounced[] = $goalId;
 
-            $this->events->onGoalRenounced($playerId, $goalId);
+            $this->events->onGoalRenounced($this->data->move, $playerId, $goalId);
         }
     }
 
@@ -525,7 +525,7 @@ class BonsaiLogic
             $this->data->goalTiles = array_values(array_filter($this->data->goalTiles, fn($g) => $g != $goalId));
 
             $score = $this->getPlayerScore($playerId)['total'];
-            $this->events->onGoalClaimed($playerId, $goalId, $score);
+            $this->events->onGoalClaimed($this->data->move, $playerId, $goalId, $score);
         }
 
         // Now that goals have been renounced (earlier) and claimed here,
@@ -621,7 +621,7 @@ class BonsaiLogic
         //
         // Give the card to the player
         //
-        $this->events->onCardTaken($playerId, $drawCardId);
+        $this->events->onCardTaken($this->data->move, $playerId, $drawCardId);
         switch ($card->type)
         {
             case CARDTYPE_TOOL:
@@ -660,7 +660,7 @@ class BonsaiLogic
                     $this->data->players->$playerId->inventory->$tileTypeName++;
                     $masterTilesReceived[] = $tileTypeId;
                 }
-                $this->events->onTilesReceived($playerId, $masterTilesReceived, $index);
+                $this->events->onTilesReceived($this->data->move, $playerId, $masterTilesReceived, $index);
                 break;
 
             case CARDTYPE_HELPER:
@@ -709,7 +709,7 @@ class BonsaiLogic
             $this->data->players->$playerId->inventory->$tileTypeName++;
         }
         if (count($tileTypes))
-            $this->events->onTilesReceived($playerId, $tileTypes, $index);
+            $this->events->onTilesReceived($this->data->move, $playerId, $tileTypes, $index);
 
         $this->data->board[$index] = null;
     }
@@ -767,7 +767,7 @@ class BonsaiLogic
                 throw new Exception('Failed to discard ' . $tileTypeName);
         }
 
-        $this->events->onTilesDiscarded($playerId, $discards);
+        $this->events->onTilesDiscarded($this->data->move, $playerId, $discards, $this->data->players->$playerId->inventory);
     }
 
 

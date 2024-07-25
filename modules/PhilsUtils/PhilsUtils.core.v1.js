@@ -32,6 +32,13 @@ define([
         // Save the game name for use later (invoking server actions)
         config.gameName = gameui.game_name;
         config.gameRootId = gameRootId;
+
+        // Define a variable to keep track of what move the client
+        // sent to the server most recently. This is useful for
+        // cases where a player has the game open in more than one
+        // window -- it allows the other instances to catch up via
+        // game notifications because they'll know they're behind.
+        gameui.lastMoveSent = 0;
       
         //
         // dojo.string.substitute
@@ -379,7 +386,7 @@ define([
     }
 
     // TODO: update to new bgaPerformAction function
-    async function invokeServerActionAsync(actionName, args) {
+    async function invokeServerActionAsync(actionName, moveNumber, args) {
         return new Promise((resolve, reject) => {
             try {
                 if (gameui.isSpectator) {
@@ -406,8 +413,16 @@ define([
                     console.error(`Action '${actionName}' not allowed in instantaneous mode`, args);
                     return reject('Invalid');
                 }
-                gameui.ajaxcall(`${config.gameName}/${config.gameName}/${actionName}.html`, { lock: true, ...args }, () => {}, result => {
-                    result?.valid ? resolve() : reject(`${actionName} failed`);
+                const { lastMoveSent } = gameui;
+                gameui.lastMoveSent = moveNumber;
+                gameui.ajaxcall(`${config.gameName}/${config.gameName}/${actionName}.html`, { lock: true, m: moveNumber, ...args }, () => {}, result => {
+                    if (result?.valid) {
+                        resolve();
+                    }
+                    else {
+                        gameui.lastMoveSent = lastMoveSent;
+                        reject(new Error(`${actionName} failed`));
+                    }
                 });
             }
             catch (err) {

@@ -257,15 +257,16 @@ class Bonsai extends Table implements BonsaiEvents
         $this->gamestate->nextState('endTurn');
     }
 
-    function onPotFlipped($playerId)
+    function onPotFlipped($move, $playerId)
     {
         $this->notifyAllPlayers('potFlipped', '', [
             'playerId' => $playerId,
-            'preserve' => [ 'playerId' ],
+            'm' => $move,
+            'preserve' => [ 'playerId', 'm' ],
         ]);
     }
 
-    function onTileRemoved($playerId, $tileTypeId, $x, $y, $score)
+    function onTileRemoved($move, $playerId, $tileTypeId, $x, $y, $score)
     {
         $this->notifyAllPlayers('tileRemoved', clienttranslate('${playerName} removes a tile'), [
             'i18n' => [ '_tile' ],
@@ -276,11 +277,12 @@ class Bonsai extends Table implements BonsaiEvents
             'x' => $x,
             'y' => $y,
             'score' => $score,
-            'preserve' => [ 'playerId', 'tile', 'x', 'y', 'score' ],
+            'm' => $move,
+            'preserve' => [ 'playerId', 'tile', 'x', 'y', 'score', 'm' ],
         ]);
     }
 
-    function onTilesAdded($playerId, $placeTiles, $score)
+    function onTilesAdded($moveNumber, $playerId, $placeTiles, $score)
     {
         $msg =
             count($placeTiles) == 1
@@ -313,11 +315,12 @@ class Bonsai extends Table implements BonsaiEvents
             'tileType' =>$tileTypes,
             'tiles' => $placeTiles,
             'score' => $score,
-            'preserve' => [ 'playerId', 'score', 'tiles', 'tileType' ],
+            'm' => $moveNumber,
+            'preserve' => [ 'playerId', 'score', 'tiles', 'tileType', 'm' ],
         ]);
     }
 
-    function onGoalRenounced($playerId, $goalId)
+    function onGoalRenounced($move, $playerId, $goalId)
     {
         $this->incStat(1, 'goals_renounced', $playerId);
 
@@ -329,11 +332,12 @@ class Bonsai extends Table implements BonsaiEvents
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
             'goal' => $goalId,
-            'preserve' => [ 'playerId', 'goal' ],
+            'm' => $move,
+            'preserve' => [ 'playerId', 'goal', 'm' ],
         ]);
     }
 
-    function onGoalClaimed($playerId, $goalId, $score)
+    function onGoalClaimed($move, $playerId, $goalId, $score)
     {
         $this->incStat(1, 'goals_claimed', $playerId);
 
@@ -346,7 +350,8 @@ class Bonsai extends Table implements BonsaiEvents
             'playerName' => $this->getPlayerNameById($playerId),
             'goal' => $goalId,
             'score' => $score,
-            'preserve' => [ 'playerId', 'goal', 'score' ],
+            'm' => $move,
+            'preserve' => [ 'playerId', 'goal', 'score', 'm' ],
         ]);
     }
 
@@ -395,7 +400,7 @@ class Bonsai extends Table implements BonsaiEvents
         $this->gamestate->nextState('endTurn');
     }
 
-    function onCardTaken($playerId, $cardId)
+    function onCardTaken($move, $playerId, $cardId)
     {
         $card = BonsaiMats::$Cards[$cardId];
         switch ($card->type)
@@ -423,7 +428,8 @@ class Bonsai extends Table implements BonsaiEvents
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
             'cardId' => $cardId,
-            'preserve' => [ 'playerId', 'cardId' ],
+            'm' => $move,
+            'preserve' => [ 'playerId', 'cardId', 'm' ],
         ]);
     }
 
@@ -437,7 +443,7 @@ class Bonsai extends Table implements BonsaiEvents
         ]);
     }
 
-    function onTilesReceived($playerId, $tileTypes, $slot)
+    function onTilesReceived($move, $playerId, $tileTypes, $slot)
     {
         foreach ($tileTypes as $tileType)
         {
@@ -465,7 +471,8 @@ class Bonsai extends Table implements BonsaiEvents
             'playerId' => $playerId,
             'tileType' => $tileTypes,
             'slot' => $slot,
-            'preserve' => [ 'playerId', 'tileType', 'slot' ],
+            'm' => $move,
+            'preserve' => [ 'playerId', 'tileType', 'slot', 'm' ],
         ]);
     }
 
@@ -500,7 +507,7 @@ class Bonsai extends Table implements BonsaiEvents
         $this->notifyAllPlayers('lastRound', clienttranslate('The draw pile is empty! This is the Last round.'), []);
     }
 
-    function onTilesDiscarded($playerId, $tiles)
+    function onTilesDiscarded($move, $playerId, $tiles, $inventory)
     {
         $this->incStat(count($tiles), 'tiles_discarded', $playerId);
         
@@ -510,7 +517,9 @@ class Bonsai extends Table implements BonsaiEvents
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
             'tileType' => $tiles,
-            'preserve' => [ 'playerId', 'tileType' ],
+            'inventory' => $inventory,
+            'm' => $move,
+            'preserve' => [ 'playerId', 'tileType', 'inventory', 'm' ],
         ]);
     }
 
