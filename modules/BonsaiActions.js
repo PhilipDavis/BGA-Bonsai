@@ -351,10 +351,13 @@ class TakeCardAction extends Action {
             bonsai.takeCardFromSlot(this.playerId, this.slot);
 
             if (isFaceDown) {
-                if (!gameui.instantaneousMode) {
-                    await delayAsync(200);
+                if (gameui.instantaneousMode) {
+                    document.getElementById(cardDivId).classList.add('bon_card-face-down');
                 }
-                await transitionInAsync(cardDivId, 'bon_card-face-down', 400);
+                else {
+                    await delayAsync(200);
+                    await transitionInAsync(cardDivId, 'bon_card-face-down', 400);
+                }
             }
         })();
 
@@ -432,19 +435,23 @@ class ReceiveTilesAction extends Action {
     }
 
     async doAsync() {
-        await Promise.all(
-            this.tileTypes.map(async (tileType, index) => {
-                if (!gameui.instantaneousMode) {
+        if (gameui.instantaneousMode) {
+            for (const tileType of this.tileTypes) {
+                gameui.createTileInInventory(this.playerId, tileType);
+                bonsai.adjustPlayerInventory(this.playerId, tileType, 1);
+            }
+        }
+        else {
+            await Promise.all(
+                this.tileTypes.map(async (tileType, index) => {
                     await delayAsync(100 * index);
-                }
-                
-                const tileId = `${this.randomValue}-${tileType}-${index}`;
-                const divId = `bon_tile-${tileId}`;
-                gameui.createTileOnSlot(tileId, tileType, this.slot);
-                
-                // Animate the width of the placeholder growing
-                const hostDiv = gameui.createTilePlaceholderInInventory(this.playerId, tileType);
-                if (!gameui.instantaneousMode) {
+                    
+                    const tileId = `${this.randomValue}-${tileType}-${index}`;
+                    const divId = `bon_tile-${tileId}`;
+                    gameui.createTileOnSlot(tileId, tileType, this.slot);
+                    
+                    // Animate the width of the placeholder growing
+                    const hostDiv = gameui.createTilePlaceholderInInventory(this.playerId, tileType);
                     await hostDiv.animate({
                         width: [ '4.25em' ], // the width of a tile
                     }, {
@@ -452,24 +459,21 @@ class ReceiveTilesAction extends Action {
                         easing: 'ease-out',
                         fill: 'forwards',
                     }).finished;
-                }
-                else {
-                    hostDiv.style.width = '4.25em';
-                }
 
-                // Slide the tile and make room in inventory at the same time
-                await gameui.slideToObjectAsync(divId, hostDiv);
+                    // Slide the tile and make room in inventory at the same time
+                    await gameui.slideToObjectAsync(divId, hostDiv);
 
-                // Remove the placeholder
-                const div = document.getElementById(divId);
-                hostDiv.replaceWith(div);
-                div.style.left = 0;
-                div.style.top = 0;
+                    // Remove the placeholder
+                    const div = document.getElementById(divId);
+                    hostDiv.replaceWith(div);
+                    div.style.left = 0;
+                    div.style.top = 0;
 
-                // Increment inventory when the tile has arrived
-                bonsai.adjustPlayerInventory(this.playerId, tileType, 1);
-            })
-        );
+                    // Increment inventory when the tile has arrived
+                    bonsai.adjustPlayerInventory(this.playerId, tileType, 1);
+                })
+            );
+        }
     }
 
     async undoAsync() {

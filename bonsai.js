@@ -1264,8 +1264,10 @@ function (
 
                     // Slide the card host into the first slot
                     this.raiseElementToBody(hostDiv);
-                    cardDiv.style.transition = 'transform 400ms ease-out';
-                    reflow();
+                    if (!gameui.instantaneousMode) {
+                        cardDiv.style.transition = 'transform 400ms ease-out';
+                        reflow();
+                    }
 
                     // Start the slide
                     const slidePromise = this.slideToObjectAsync(hostDiv, 'bon_slot-0');
@@ -1276,7 +1278,12 @@ function (
                             await delayAsync(50);
                         }
                         cardDiv.classList.remove('bon_card-face-down');
-                        cardDiv.addEventListener('transitionend', resolve, { once: true });
+                        if (gameui.instantaneousMode) {
+                            resolve();
+                        }
+                        else {
+                            cardDiv.addEventListener('transitionend', resolve, { once: true });
+                        }
                     });
 
                     // Wait for all animations to end
