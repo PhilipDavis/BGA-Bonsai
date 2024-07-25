@@ -36,7 +36,10 @@ if (!defined('BON_MATS'))
 class BonsaiMats
 {
     static array $TileTypes = [
-        // Note: Do not put WILD tile type in this collection!
+        TILETYPE_WILD => [
+            'id' => TILETYPE_WILD,
+            'name' => 'wild',
+        ],
         TILETYPE_WOOD => [
             'id' => TILETYPE_WOOD,
             'name' => 'wood',

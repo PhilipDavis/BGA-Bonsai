@@ -667,7 +667,7 @@ class BonsaiLogic
                 $this->data->players->$playerId->faceDown[] = $drawCardId;
                 foreach ($card->resources as $tileTypeId)
                 {
-                    $tileTypeName = $tileTypeId === TILETYPE_WILD ? 'wild' : BonsaiMats::$TileTypes[$tileTypeId]['name'];
+                    $tileTypeName = BonsaiMats::$TileTypes[$tileTypeId]['name'];
                     $canPlay->$tileTypeName++;
                 }
                 break;
