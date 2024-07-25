@@ -767,6 +767,7 @@ class BonsaiLogic
                 throw new Exception('Failed to discard ' . $tileTypeName);
         }
 
+        // TODO: remove the inventory... it's just there to debug an issue on the client
         $this->events->onTilesDiscarded($this->data->move, $playerId, $discards, $this->data->players->$playerId->inventory);
     }
 
