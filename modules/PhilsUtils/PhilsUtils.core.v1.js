@@ -315,13 +315,20 @@ define([
         return stringFromTemplate(templateHtml, replacements, strict);
     }
 
-    function __(text) {
-        return bga_format(_(text), {
+    function applyMarkup(text) {
+        return bga_format(text, {
             '/': t => `<i>${t}</i>`,
             '*': t => `<b>${t}</b>`,
             '_': t => `<u>${t}</u>`,
             '|': t => `<br/>`,
         });
+    }
+
+    function mapValues(obj, fn) {
+        return Object.entries(obj).reduce((result, [ key, value ]) => {
+            result[key] = fn(value);
+            return result;
+        }, {});
     }
 
     //
@@ -455,7 +462,8 @@ define([
     const core = {
         install,
         formatBlock,
-        __,
+        applyMarkup,
+        mapValues,
         createFromTemplate,
         stringFromTemplate,
         invokeServerActionAsync,
