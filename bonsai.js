@@ -190,6 +190,7 @@ function (
             this.resizeObserver.observe(surfaceDiv);
 
             this.bThisGameSupportsFastReplay = true;
+            this.bThisGameSupportFastReplay = true;
         },
 
         setupPlayer(playerId, player, score, isGameOver) {
