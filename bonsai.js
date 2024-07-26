@@ -157,7 +157,7 @@ function (
             this.addTooltipHtml('bon_deck', this.toolTipText['bon_deck'], ToolTipDelay);
 
             if (Object.keys(bonsai.players).length === 1) {
-                this.createSoloPanel(bonsai.players[this.myPlayerId]);
+                this.createSoloPanel();
             }
 
             const playerInventoryTilesDiv = document.getElementById(`bon_tiles-${this.myPlayerId}`);

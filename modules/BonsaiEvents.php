@@ -14,10 +14,10 @@ interface BonsaiEvents
     function onCardDiscarded(int $cardId); // For solo game
     function onCapacityIncreased(int $playerId, int $delta);
     function onTilesReceived(int $move, int $playerId, array $tileTypes, int $slot);
-    function onCardRevealed(int | null $cardId);
+    function onCardRevealed(/* TODO: int | null */ $cardId);
     function onTilesDiscarded(int $move, int $playerId, array $tiles, object $inventory);
     function onEndTurn(int $playerId, int $score);
     function onLastRound();
     function onChangeNextPlayer(int $playerId);
-    function onGameOver($scores, $remainingTiles, $faceDownCards, bool | null $wonSoloGame);
+    function onGameOver($scores, $remainingTiles, $faceDownCards, /* TODO: bool | null */ $wonSoloGame);
 }
