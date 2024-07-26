@@ -336,6 +336,7 @@ function (
         },
 
         createSoloPanel() {
+            if (!bonsai.isSolo) return;
             createFromTemplate('bonsai_Templates.soloObjectivesPanel', {}, 'bon_goals', { placement: 'afterbegin' });
 
             const msg = stringFromTemplate(_('Score at least ${N} points'), { N: SoloPointsRequired[bonsai.options.solo || 1] });

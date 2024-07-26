@@ -802,6 +802,7 @@ define([
         getFlowerScore(moves) {
             const flowerMoves = moves.filter(move => move[0] == TileType.Flower);
             const tree = this.trees[this.myPlayerId];
+            if (!tree) return 0;
     
             // Create a lookup for tiles that exist in the tree
             const filled = {};
@@ -829,7 +830,7 @@ define([
         getPlayerScore(playerId) {
             const player = this.data.players[playerId];
             const showFullScore =
-                playerId === this.myPlayerId && (
+                playerId == this.myPlayerId && (
                     this.isSolo ||
                     this.data.finalTurns === 0
                 );
@@ -869,7 +870,7 @@ define([
             // Score the parchment cards
             //
             let parchmentScore = 0;
-            if (this.isSolo || this.data.finalTurns === 0) {
+            if (showFullScore) {
                 for (const cardId of parchmentCards)
                 {
                     const card = Cards[cardId];
