@@ -11,7 +11,7 @@
                 "tmdisplay": "All Parchment cards are placed in the first half of the deck"
             }
         },
-        "default": "1"
+        "default": 1
     },
     "101": {
         "name": "Play with Goal Tiles",
@@ -33,7 +33,7 @@
                 "value": [ 2, 3, 4 ]
             }
         ],
-        "default": "1"
+        "default": 1
     },
     "102": {
         "name": "Solo difficulty level",
@@ -71,6 +71,6 @@
                 "value": 1
             }
         ],
-        "default": "2"
+        "default": 2
     }
 }

@@ -12,7 +12,7 @@
                 "cssPref": "bon_pref-i-cant-function-without-a-deck-count"
             }
         },
-        "default": 1
+        "default": 2
     },
     "301": {
         "name": "Sort tiles and cards by type",
