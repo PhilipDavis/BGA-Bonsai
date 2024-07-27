@@ -116,7 +116,7 @@ define([
                 data.processingScriptError = true;
 
                 // Send game errors to the game
-                if ((msg + url).indexOf(config.gameName) >= 0) {
+                if ((msg + url).indexOf(`/${config.gameName}/`) >= 0) {
                     // Don't send duplicate reports in the same game
                     const hash = md5(`${msg}_${url}_${lineNumber}`);
                     if (data.reportedErrors[hash]) return;
