@@ -206,7 +206,7 @@ class Bonsai extends Table implements BonsaiEvents
 
         // Bail out if the current player is not the active player
         if ($activePlayerId != $currentPlayerId)
-            throw new BgaVisibleSystemException($this->_("It is not your turn"));
+            throw new BgaVisibleSystemException(clienttranslate("It is not your turn"));
 
         return $activePlayerId;
     }
@@ -272,7 +272,7 @@ class Bonsai extends Table implements BonsaiEvents
             'i18n' => [ '_tile' ],
             'playerId' => $playerId,
             'playerName' => $this->getPlayerNameById($playerId),
-            '_tile' => _('a tile'),
+            '_tile' => clienttranslate('a tile'),
             'tile' => $tileTypeId,
             'x' => $x,
             'y' => $y,
