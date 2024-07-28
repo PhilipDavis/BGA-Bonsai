@@ -223,6 +223,19 @@ define([
 
         // TODO: this part is less generic... maybe make the template name resolution more flexible?
         if (typeof replacements === 'object' && replacements.constructor.name === 'Object') {
+            // Perform translation
+            const { i18n } = replacements;
+            if (typeof i18n == 'object') {
+                for (const key of i18n) {
+                    const enText = replacements[key];
+                    if (strict && typeof enText == 'undefined') {
+                        throw new Error(`Missing key '${key}' in ${JSON.stringify(Object.keys(replacements))} for template ${template}`);
+                    }
+                    replacements[key] = enText ? gameui.clienttranslate_string(enText) : '';
+                }
+            }
+
+            // Template replacement
             for (const [ key, value ] of Object.entries(replacements)) {
                 const logMatch = /^_(?<dataKey>\D+)(?<index>\d*)$/.exec(key);
                 if (logMatch) {
