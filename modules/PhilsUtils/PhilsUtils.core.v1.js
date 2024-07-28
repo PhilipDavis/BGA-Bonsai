@@ -231,6 +231,13 @@ define([
                     if (strict && typeof enText == 'undefined') {
                         throw new Error(`Missing key '${key}' in ${JSON.stringify(Object.keys(replacements))} for template ${template}`);
                     }
+                    else if (typeof enText == 'object') {
+                        const { log, args } = enText;
+                        if (!log || !args) {
+                            throw new Error(`Unexpected object '${key}' in replacement values for template ${template}`);
+                        }
+                        enText = stringFromTemplate(log, args, strict);
+                    }
                     replacements[key] = enText ? gameui.clienttranslate_string(enText) : '';
                 }
             }
