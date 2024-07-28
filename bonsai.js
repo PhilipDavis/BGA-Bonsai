@@ -332,7 +332,12 @@ function (
         },
 
         userWantsSorting() {
-            return gameui.getGameUserPreference(Preference.SortedTilesAndCards) == '2';
+            try {
+                return gameui.getGameUserPreference(Preference.SortedTilesAndCards) == '2';
+            }
+            catch (err) {
+                return false;
+            }
         },
 
         createSoloPanel() {
