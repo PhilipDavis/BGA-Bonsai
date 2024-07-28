@@ -221,13 +221,15 @@ define([
             return '';
         }
 
+        template = gameui.clienttranslate_string(template);
+
         // TODO: this part is less generic... maybe make the template name resolution more flexible?
         if (typeof replacements === 'object' && replacements.constructor.name === 'Object') {
             // Perform translation
             const { i18n } = replacements;
             if (typeof i18n == 'object') {
                 for (const key of i18n) {
-                    const enText = replacements[key];
+                    let enText = replacements[key];
                     if (strict && typeof enText == 'undefined') {
                         throw new Error(`Missing key '${key}' in ${JSON.stringify(Object.keys(replacements))} for template ${template}`);
                     }
