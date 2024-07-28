@@ -1169,6 +1169,8 @@ class BonsaiLogic
     public function getPlayerScore($playerId)
     {
         $final = $this->getGameProgression() >= 100;
+        if (!isset($this->data->players->$playerId))
+            return 0;
 
         $player = $this->data->players->$playerId;
         $isFlipped = $player->played[0][1] == 1;
