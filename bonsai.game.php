@@ -151,7 +151,28 @@ class Bonsai extends Table implements BonsaiEvents
     function getGameProgression()
     {
         $bonsai = $this->loadGameState();
-        return $bonsai->getGameProgression();
+        $stateBefore = $bonsai->toJson();
+        try
+        {
+            return $bonsai->getGameProgression();
+        }
+        catch (Throwable $e)
+        {
+            $refId = uniqid();
+            $test = implode(' ', [
+                '/***** Exception: ' . $e->getMessage() . ' *****/',
+                'public function testGameProgressionRef' . $refId . '() {',
+                '    $bonsai = $this->bonsaiFromJson(',
+                '        \'' . $stateBefore . '\'',
+                '    );',
+                '    $bonsai->getGameProgression();',
+                '    $this->assertTrue(true);',
+                '}',
+                '/*' . '**********/',
+            ]);
+            $this->error($test);
+            throw $e;
+        }
     }
 
 
@@ -167,8 +188,26 @@ class Bonsai extends Table implements BonsaiEvents
 
     protected function loadGameState()
     {
-        $json = $this->getObjectFromDB("SELECT id, doc FROM game_state LIMIT 1")['doc'];
-        return BonsaiLogic::fromJson($json, $this);
+        $json = '';
+        try
+        {
+            $json = $this->getObjectFromDB("SELECT id, doc FROM game_state LIMIT 1")['doc'];
+        }
+        catch (Throwable $e)
+        {
+            $this->error('Failed to read from game_state table: ' . $e->getMessage());
+            throw $e;
+        }
+
+        try
+        {
+            return BonsaiLogic::fromJson($json, $this);
+        }
+        catch (Throwable $e)
+        {
+            $this->error('Failed to parse game state: ' . $e->getMessage() . PHP_EOL . 'JSON: ' . $json . PHP_EOL);
+            throw $e;
+        }
     }
 
     protected function saveGameState(BonsaiLogic $bonsai)

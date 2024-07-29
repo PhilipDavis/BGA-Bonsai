@@ -33,9 +33,21 @@ final class BonsaiLogicTest extends TestCase
         foreach($reflection->getMethods() as $method) {
             $methods[] = $method->name;
         }
-        return $this->getMockBuilder(BonsaiEvents::class)
-            ->onlyMethods($methods)
-            ->getMock();
+
+        $mockBuilder = $this->getMockBuilder(BonsaiEvents::class);
+        
+        if (method_exists($mockBuilder, 'onlyMethods')) // PHPUnit 10
+        {
+            return $mockBuilder
+                ->onlyMethods($methods)
+                ->getMock();
+        }
+        else if (method_exists($mockBuilder, 'setMethods')) // PHPUnit 7
+        {
+            return $mockBuilder
+                ->setMethods($methods)
+                ->getMock();
+        }
     }
 
     private function bonsaiFromJson(string $json)

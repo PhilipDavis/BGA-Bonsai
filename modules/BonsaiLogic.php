@@ -41,6 +41,8 @@ class BonsaiLogic
     static function parseJson($json)
     {
         $data = json_decode($json);
+        if ($data === false)
+            throw new Exception('Failed to decode JSON');
 
         $version = 1;
         if (isset($data->version))
@@ -75,6 +77,8 @@ class BonsaiLogic
             // We'll just compute this based on the x-coord of the first wood tile.
             // (0, 0) is the standard setup with the bud on the left
             // (1, 0) is the flipped setup with the bug on the right
+            if (!is_array($data->order))
+                throw new Exception('data.order is not an array');
             foreach ($data->order as $playerId)
                 unset($data->players->$playerId->mirrored);
 
@@ -833,6 +837,14 @@ class BonsaiLogic
 
     public function getGameProgression()
     {
+        // I don't know how this could possibly fail... but I'm seeing errors on 
+        // servers 3, 6, 10, 14:
+        // `count(): Parameter must be an array or an object that implements Countable`
+        if (!is_array($this->data->order))
+            throw new Exception('data.order is not an array');
+        if (!is_array($this->data->drawPile))
+            throw new Exception('data.drawPile is not an array');
+
         // Determine how many cards this game started with and how many are remaining in the draw pile
         $playerCount = count($this->data->order);
         $cards = array_keys(array_filter(BonsaiMats::$Cards, fn($card) => $playerCount >= $card->minPlayers));

@@ -11,6 +11,7 @@
 #
 
 FROM php:8.3-alpine
+#FROM php:7.4-alpine
 
 WORKDIR /var/php
 
@@ -25,11 +26,20 @@ RUN apk update && \
         php-xml \
         # Not found
         #php-pcov \
+        # Note: remove php-xdebug for PHP 7
         php-xdebug \
-    && \
-    wget -O phpunit.phar https://phar.phpunit.de/phpunit-10.phar && \
+    && echo Done
+
+# PHP 7
+#RUN wget -O phpunit.phar https://phar.phpunit.de/phpunit-7.phar && \
+#    chmod +x phpunit.phar
+
+RUN wget -O phpunit.phar https://phar.phpunit.de/phpunit-10.phar && \
     chmod +x phpunit.phar
 
 WORKDIR /var/bga
+
+# PHP 7
+#CMD ["phpunit.phar", "--testdox", "modules/BonsaiLogicTest.php"]
 
 CMD ["phpunit.phar", "--no-progress", "--testdox", "modules/BonsaiLogicTest.php"]
