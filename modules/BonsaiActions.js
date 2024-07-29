@@ -106,7 +106,10 @@ class PlaceTileAction extends Action {
         const placeholderDiv = gameui.replaceInventoryTileWithPlaceholder(tileDiv);
         const destDiv = gameui.createTileInTree(this.playerId, this.tileType, this.x, this.y, this.r, false);
 
-        if (!gameui.instantaneousMode) {
+        if (gameui.instantaneousMode) {
+            destDiv.classList.remove('bon_hidden');
+        }
+        else {
             const srcRect = tileDiv.getBoundingClientRect();
             const destRect = destDiv.getBoundingClientRect();
             const srcMidX = Math.round(srcRect.left + srcRect.width / 2);
