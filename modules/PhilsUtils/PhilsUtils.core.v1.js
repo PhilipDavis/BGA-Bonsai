@@ -233,7 +233,7 @@ define([
                     if (strict && typeof enText == 'undefined') {
                         throw new Error(`Missing key '${key}' in ${JSON.stringify(Object.keys(replacements))} for template ${template}`);
                     }
-                    else if (typeof enText == 'object') {
+                    else if (enText && typeof enText == 'object') {
                         const { log, args } = enText;
                         if (!log || !args) {
                             throw new Error(`Unexpected object '${key}' in replacement values for template ${template}`);
@@ -295,6 +295,12 @@ define([
             let value = replacements[name];
             if (typeof value === 'function') {
                 value = value(index);
+            }
+            if (name === 'playerName') {
+                const player = Object.values(gameui.gamedatas.players).find(p => p.name === value);
+                if (player?.color.match(/[0-9a-f]{3,6}/)) {
+                    value = `<b style="color: #${player.color};">${value}</b>`;
+                }
             }
             if (value === undefined) {
                 // I saw an error where the replacement name was "!actionBarTemplate" so
