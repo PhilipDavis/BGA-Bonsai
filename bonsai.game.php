@@ -199,6 +199,9 @@ class Bonsai extends Table implements BonsaiEvents
             throw $e;
         }
 
+        if ($json === null)
+            throw new Exception('Failed to read game state or value was NULL');        
+
         try
         {
             return BonsaiLogic::fromJson($json, $this);
