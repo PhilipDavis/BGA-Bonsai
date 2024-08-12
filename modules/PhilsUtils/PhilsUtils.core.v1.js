@@ -132,6 +132,8 @@ define([
                         msg,
                     };
 
+                    console.error('Reporting error:', msg);
+
                     // Game must have an action called 'jsError' and must be available
                     // in all game states. Note: errors during setup() will not have
                     // a URL or line number due to the way BGA wrote their code.
@@ -446,7 +448,12 @@ define([
     }
 
     // TODO: update to new bgaPerformAction function
-    async function invokeServerActionAsync(actionName, moveNumber, args) {
+    async function invokeServerActionAsync(actionName, moveNumber, args = {}) {
+        const {
+            checkAction = true,
+            playOutOfTurn = false,
+        } = args;
+
         return new Promise((resolve, reject) => {
             try {
                 if (gameui.isSpectator) {
@@ -457,11 +464,11 @@ define([
                     console.error(`Action '${actionName}' not allowed in archive mode`);
                     return reject('Invalid');
                 }
-                if (!gameui.checkAction(actionName)) {
+                if (checkAction && !gameui.checkAction(actionName)) {
                     console.error(`Action '${actionName}' not allowed in ${gameui.currentState}`, args);
                     return reject('Invalid');
                 }
-                if (!gameui.isCurrentPlayerActive()) {
+                if (!playOutOfTurn && !gameui.isCurrentPlayerActive()) {
                     console.error(`Action '${actionName}' not allowed for inactive player`, args);
                     return reject('Invalid');
                 }
