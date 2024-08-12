@@ -526,7 +526,7 @@ class Bonsai extends Table implements BonsaiEvents
     function onCardDiscarded($cardId)
     {
         $card = BonsaiMats::$Cards[$cardId];
-        $this->notifyAllPlayers('cardDiscarded', '${_cardId} is discarded', [
+        $this->notifyAllPlayers('cardDiscarded', clienttranslate('${_cardId} is discarded'), [
             'i18n' => [ '_cardId' ],
             '_cardId' => $card->label,
             'cardId' => $cardId,
