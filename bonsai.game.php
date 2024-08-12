@@ -183,6 +183,11 @@ class Bonsai extends Table implements BonsaiEvents
     protected function initializeGameState(BonsaiLogic $bonsai)
     {
         $json = $bonsai->toJson();
+        if (!$json)
+        {
+            $this->error('Failed to encode game state to JSON: ' . serialize($bonsai));
+            throw new Exception('Failed to encode game state!');
+        }
         $this->DbQuery("INSERT INTO game_state (doc) VALUES ('$json')");
     }
 
