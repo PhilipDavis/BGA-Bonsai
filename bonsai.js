@@ -252,6 +252,7 @@ function (
                 placed[tileType].create(`bon_tree-${TileTypeName[tileType]}-${playerId}`);
                 this.setPlayerPlaced(playerId, tileType, playerTiles.reduce((sum, t) => sum + (t[0] == tileType ? 1 : 0), 0));
             }
+            this.adjustPlayerPlaced(playerId, TileType.Wood, 1); // Account for the starting tile
 
             this.capacity[playerId] = new ebg.counter();
             this.capacity[playerId].create(`bon_capacity-${playerId}`);
