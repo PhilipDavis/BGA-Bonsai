@@ -1425,6 +1425,7 @@ function (
         //// Player's action
 
         async onClickCultivate() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('cultivate')) return;
             console.log('onClickCultivate()');
@@ -1433,6 +1434,7 @@ function (
         },
 
         async onClickInventoryTile(divId, tileType) {
+            if (this.isClientLocked()) return;
             const args = {
                 tileDivId: divId,
                 tileType: tileType,
@@ -1445,9 +1447,9 @@ function (
         },
 
         async onClickVacancy(e) {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             e.stopPropagation();
-            if (this.isClientLocked()) return;
 
             const { x, y } = e.currentTarget.dataset;
             console.log(`onClickVacancy(${x}, ${y})`);
@@ -1461,9 +1463,9 @@ function (
         },
 
         async onClickGoal(goalId) {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('cultivate')) return;
-            if (this.isClientLocked()) return;
             const goalDiv = document.getElementById(`bon_goal-${goalId}`);
             if (!goalDiv.classList.contains('bon_selectable')) return;
 
@@ -1474,6 +1476,7 @@ function (
         },
 
         async onClickCancelCultivate() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickCancelCultivate()');
             await this.workflowManager.abortAsync();
@@ -1481,6 +1484,7 @@ function (
         },
 
         async onClickUndo() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickUndo()');
 
@@ -1502,18 +1506,21 @@ function (
         // (e.g. when placing a tile would cause her to lose points)
         //
         async onClickStopPlacingTiles() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickStopPlacingTiles()');
             await this.workflowManager.advanceAsync();
         },
 
         async onClickCancel() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickCancel()');
             await this.workflowManager.advanceAsync({ canceled: true });
         },
 
         async onClickCultivateEndTurn() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickCultivateEndTurn()`);
 
@@ -1860,6 +1867,7 @@ function (
         },
 
         async onClickFlipPot() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             if (bonsai.players[this.myPlayerId].played.length > 1) return;
             console.log(`onClickFlipPot()`);
@@ -1877,6 +1885,7 @@ function (
         },
 
         async onClickRemoveTiles() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickRemoveTiles()`);
 
@@ -1884,6 +1893,7 @@ function (
         },
 
         async onClickMeditate() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('meditate')) return;
             console.log(`onClickMeditate()`);
@@ -1892,6 +1902,7 @@ function (
         },
 
         async onClickSlot(slot) {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             if (!this.checkAction('meditate')) return;
             if (this.currentState !== 'playerTurn' && this.currentState !== 'client_playerTurn' && this.currentState != 'client_meditate') return;
@@ -1909,6 +1920,7 @@ function (
         },
 
         async onClickChooseTileType(tileType) {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickChooseTileType(${tileType})`);
 
@@ -1916,6 +1928,7 @@ function (
         },
 
         async onClickMeditateEndTurn() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log(`onClickMeditateEndTurn()`);
 
@@ -1959,6 +1972,7 @@ function (
         },
 
         async onClickCancelMeditate() {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             console.log('onClickCancelMeditate()');
             await this.workflowManager.abortAsync();
@@ -1966,6 +1980,7 @@ function (
         },
 
         async onClickClaimGoal(claimed) {
+            if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             await this.workflowManager.advanceAsync({ claimed });
         },
