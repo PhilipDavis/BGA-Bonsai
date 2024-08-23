@@ -429,6 +429,9 @@ class TakeCardAction extends Action {
 class ReceiveTilesAction extends Action {
     constructor(playerId, tileTypes, slot, name, userChose = false) {
         super();
+        if (!tileTypes?.length || tileTypes[0] === undefined) {
+            throw new Error('Invalid tiles to receive');
+        }
         this.playerId = playerId;
         this.tileTypes = tileTypes;
         this.slot = slot;
@@ -528,7 +531,7 @@ class ReceiveTilesAction extends Action {
                 ...array,
                 {
                     action: this.name,
-                    data: this.tileTypes,
+                    data: [ ...this.tileTypes ],
                 },
             ];
         }

@@ -2128,6 +2128,7 @@ function (
             this.resetClientStateArgs();
             this.scoreCounter[playerId].setValue(score);
             this.updateSoloPanel();
+            this.workflowManager.hardReset();
         },
 
         async notify_finalScore({ scores, reveal }) {

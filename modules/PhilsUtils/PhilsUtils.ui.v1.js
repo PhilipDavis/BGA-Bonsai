@@ -199,6 +199,18 @@ define([], () => {
             this.gameui.restoreServerGameState();
             this.workflow = null;
         }
+
+        //
+        // Terminate any active progress and reset to the current state
+        // without updating any UI. I've added this as a failsafe to
+        // call at the end of a player's turn to ensure that there is
+        // no lingering state from a previous turn.
+        //
+        hardReset() {
+            this.workflow = null;
+            this.actionStack.clear();
+            this.gameui.restoreServerGameState();
+        }
     }
 
     class Action {
