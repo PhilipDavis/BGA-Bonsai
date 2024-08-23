@@ -734,19 +734,29 @@ class BonsaiLogic
 
     function revealCard()
     {
-        //
-        // Shift the other cards to the right and draw the next card
-        //
+        // Make sure there is at least one null
         $index = array_search(null, $this->data->board);
         if ($index === false || $index > 3)
             throw new Exception('Invalid board state');
-        array_splice($this->data->board, $index, 1);
 
+        //
+        // Shift the other cards to the right and draw the next card
+        //
+        foreach (range(3, 1, -1) as $i)
+        {
+            if ($this->data->board[$i] === null)
+            {
+                $prev = $this->data->board[$i - 1];
+                $this->data->board[$i] = $prev;
+                $this->data->board[$i - 1] = null;
+            }
+        }
+        
         $nextCardId = null;
         if (count($this->data->drawPile))
             $nextCardId = array_shift($this->data->drawPile);
 
-        array_unshift($this->data->board, $nextCardId);
+        $this->data->board[0] = $nextCardId;
         $this->events->onCardRevealed($nextCardId);
 
         return !!$nextCardId;
@@ -1403,6 +1413,11 @@ class BonsaiLogic
 
             $this->cultivate(false, $removeTiles, $placeTiles, $renounceGoals, $claimGoals);
         }
+    }
+
+    function getBoard()
+    {
+        return $this->data->board;
     }
 
     //

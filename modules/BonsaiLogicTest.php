@@ -365,4 +365,30 @@ final class BonsaiLogicTest extends TestCase
 
         $this->assertTrue(true);
     }
+
+    public function testCardsSlideWithMultipleEmptySlots()
+    {
+        $bonsai = $this->bonsaiFromJson(
+            '{"v":3,"move":50,
+                "board":[null,18,23,10],
+                "order":[2393715,2393717,2393716,2393718],
+                "options":{"goals":true,"tokonoma":false},
+                "players":{
+                    "2393715":{"color":0,"faceUp":[1,17,15,8,7,16,19],"played":[[1,0,0,0],[1,0,1,0],[1,1,1,0],[1,0,2,0],[1,0,3,0],[1,1,3,0]],"canPlay":{"leaf":1,"wild":1,"wood":3,"fruit":1,"flower":3},"claimed":[],"capacity":7,"faceDown":[26,41,28,29],"inventory":{"leaf":6,"wood":1,"fruit":0,"flower":0},"renounced":[]},
+                    "2393716":{"color":2,"faceUp":[12,11],"played":[[1,0,0,0],[1,0,1,0],[1,-1,1,0],[1,0,2,0]],"canPlay":{"leaf":3,"wild":1,"wood":1,"fruit":0,"flower":0},"claimed":[],"capacity":5,"faceDown":[45,22,37,27,43,34,31,42,24],"inventory":{"leaf":2,"wood":2,"fruit":0,"flower":0},"renounced":[]},
+                    "2393717":{"color":1,"faceUp":[20,13,4],"played":[[1,0,0,0],[1,0,1,0],[1,0,2,0],[1,0,3,0],[1,-1,1,0],[2,-2,2,5],[3,-1,2,1],[3,-1,3,0]],"canPlay":{"leaf":2,"wild":1,"wood":2,"fruit":1,"flower":0},"claimed":[],"capacity":7,"faceDown":[30,35,38,39,36,32,21],"inventory":{"leaf":4,"wood":1,"fruit":1,"flower":1},"renounced":[]},
+                    "2393718":{"color":3,"faceUp":[5,9,14,6,3,2],"played":[[1,0,0,0],[1,1,1,0]],"canPlay":{"leaf":2,"wild":1,"wood":2,"fruit":0,"flower":0},"claimed":[],"capacity":13,"faceDown":[33,46,25,47,40,44],"inventory":{"leaf":4,"wood":5,"fruit":0,"flower":1},"renounced":[]}
+                },
+                "drawPile":[],"goalTiles":[1,2,3,7,8,9,13,14,15],"finalTurns":2,"nextPlayer":2
+            }'
+        );
+        $playerId = 2393717;
+        $i = json_decode(
+            '{"flip":0,"remove":null,"card":10,"choice":0,"master":[],"place":[],"renounce":[],"claim":[],"discard":[1]}'
+        );
+        $bonsai->meditate($i->flip, $i->remove, $i->card, $i->choice, $i->master, $i->place, $i->renounce, $i->claim, $i->discard);
+
+        $this->assertEquals([null,null,18,23], $bonsai->getBoard());
+    }
+    
 }
