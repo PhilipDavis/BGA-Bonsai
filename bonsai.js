@@ -1317,13 +1317,16 @@ function (
             const div = document.getElementById('bon_final-scores');
             div.addEventListener('click', () => div.classList.toggle('bon_minimized'));
 
+            let highScore = 0;
+            let winner = null;
+
             const runningTotals = {};
             for (const playerId of Object.keys(scores)) {
                 runningTotals[playerId] = 0;
             }
 
             // Add the player names along the top
-            for (const playerId of Object.keys(scores)) {
+            for (const playerId of bonsai.data.order) {
                 if (animate) {
                     await delayAsync(500);
                 }
@@ -1335,7 +1338,7 @@ function (
             }
 
             // Add blank cells for empty columns
-            for (let i = Object.keys(scores).length; i < 4; i++) {
+            for (let i = bonsai.data.order.length; i < 4; i++) {
                 createFromTemplate('bonsai_Templates.finalScoreHeader', {
                     TEXT: '',
                     COLOR: '#000',
@@ -1349,7 +1352,8 @@ function (
                 'leaf', 'flower', 'fruit', 'parchment', 'goal', 'total'
             ];
             for (const key of scoringCategories) {
-                for (const [ playerId, playerScore ] of Object.entries(scores)) {
+                for (const playerId of bonsai.data.order) {
+                    const playerScore = scores[playerId];
                     const divId = `bon_final-score-${playerId}-${key}`;
                     createFromTemplate('bonsai_Templates.finalScoreValue', {
                         DIV_ID: divId,
@@ -1358,7 +1362,7 @@ function (
                         WEIGHT: key === 'total' ? 700 : 400,
                     }, 'bon_final-scores-table');
                 }
-                for (let i = Object.keys(scores).length; i < 4; i++) {
+                for (let i = bonsai.data.order.length; i < 4; i++) {
                     const divId = `bon_final-score_empty${i}-${key}`;
                     createFromTemplate('bonsai_Templates.finalScoreValue', {
                         DIV_ID: divId,
@@ -1377,9 +1381,15 @@ function (
                 if (animate) {
                     await delayAsync(500);
                 }
-                const rowPromises = Object.keys(scores).map(async (playerId, i) => {
+                const rowPromises = bonsai.data.order.map(async (playerId, i) => {
                     if (key !== 'total') {
                         runningTotals[playerId] += scores[playerId][key];
+                    }
+                    else {
+                        if (runningTotals[playerId] >= highScore) {
+                            highScore = runningTotals[playerId];
+                            winner = playerId;
+                        }
                     }
 
                     const divId = `bon_final-score-${playerId}-${key}`;
@@ -1411,10 +1421,11 @@ function (
             }
 
             // Highlight the winning score
-            const playerId = Object.entries(scores).sort(([ , scoresA ], [ , scoresB ]) => scoresB.total - scoresA.total).map(pair => pair[0]).shift();
-            const divId = `bon_final-score-${playerId}-total`;
-            const scoreDiv = document.getElementById(divId);
-            scoreDiv.classList.add('bon_winner');
+            if (winner) {
+                const divId = `bon_final-score-${winner}-total`;
+                const scoreDiv = document.getElementById(divId);
+                scoreDiv?.classList.add('bon_winner');
+            }
 
             if (animate) {
                 await delayAsync(2000);
