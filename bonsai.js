@@ -1715,7 +1715,7 @@ function (
 
             // Discard tiles if necessary
             if (!bonsai.options.revealBeforeDiscard) {
-                yield this.discardTilesWorkflow();
+                yield * this.discardTilesWorkflow();
             }
 
             yield new SetClientState('client_meditateConfirm', _('${you} must confirm your turn'));
