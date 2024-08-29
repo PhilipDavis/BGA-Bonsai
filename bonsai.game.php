@@ -23,6 +23,10 @@ define('OPT_GOALTILES_NO', 2);
 
 define('OPT_SOLO_DIFFICULTY', 'OPT_SOLO_DIFFICULTY');
 
+define('OPT_REVEAL_BEFORE_DISCARD', 'OPT_REVEAL_BEFORE_DISCARD');
+define('OPT_REVEAL_BEFORE_DISCARD_NO', 1);
+define('OPT_REVEAL_BEFORE_DISCARD_YES', 2);
+
 
 class Bonsai extends Table implements BonsaiEvents
 {
@@ -43,6 +47,7 @@ class Bonsai extends Table implements BonsaiEvents
             "OPT_RULES" => 100,
             "OPT_GOALTILES" => 101,
             "OPT_SOLO_DIFFICULTY" => 102,
+            "OPT_REVEAL_BEFORE_DISCARD" => 103,
         ]);
 	}
 	
@@ -119,6 +124,7 @@ class Bonsai extends Table implements BonsaiEvents
         $gameOptions = [
             'tokonoma' => $this->getOption(OPT_RULES) == OPT_RULES_TOKONOMA,
             'goals' => $this->getOption(OPT_GOALTILES) == OPT_GOALTILES_YES,
+            'revealBeforeDiscard' => $this->getOption(OPT_REVEAL_BEFORE_DISCARD) == OPT_REVEAL_BEFORE_DISCARD_YES,
         ];
 
         if ($playerCount === 1)
@@ -444,6 +450,49 @@ class Bonsai extends Table implements BonsaiEvents
 
         $this->saveGameState($bonsai);
 
+        if ($bonsai->revealBeforeDiscard() && $bonsai->getMustDiscardCount() > 0)
+        {
+            $this->gamestate->nextState('discardExcess');
+            return;
+        }
+        
+        $this->gamestate->nextState('endTurn');
+    }
+    
+    public function action_discard($discardTiles)
+    {
+        $activePlayerId = $this->validateCaller();
+
+        $bonsai = $this->loadGameState();
+        $stateBefore = $bonsai->toJson();
+        try
+        {
+            $bonsai->discardTiles($discardTiles);
+        }
+        catch (Throwable $e)
+        {
+            $refId = uniqid();
+            $test = implode(' ', [
+                '/***** Exception: ' . $e->getMessage() . ' *****/',
+                'public function testDiscardRef' . $refId . '() {',
+                '    $bonsai = $this->bonsaiFromJson(',
+                '        \'' . $stateBefore . '\'',
+                '    );',
+                '    $playerId = ' . $activePlayerId . ';',
+                '    $i = json_decode(\'' . json_encode([
+                        'discard' => $discardTiles, 
+                    ]) . '\');',
+                '    $bonsai->discardTiles($i->discard);',
+                '    $this->assertTrue(true);',
+                '}',
+                '/*' . '**********/',
+            ]);
+            $this->error($test);
+            throw new BgaVisibleSystemException("Invalid operation; please reload - Ref #" . $refId);
+        }
+
+        $this->saveGameState($bonsai);
+        
         $this->gamestate->nextState('endTurn');
     }
 
@@ -554,7 +603,7 @@ class Bonsai extends Table implements BonsaiEvents
         $this->notifyAllPlayers('lastRound', clienttranslate('The draw pile is empty! This is the Last round.'), []);
     }
 
-    function onTilesDiscarded($move, $playerId, $tiles, $inventory)
+    function onTilesDiscarded($move, $playerId, $tiles)
     {
         $this->incStat(count($tiles), 'tiles_discarded', $playerId);
         
@@ -564,9 +613,8 @@ class Bonsai extends Table implements BonsaiEvents
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
             'tileType' => $tiles,
-            'inventory' => $inventory,
             'm' => $move,
-            'preserve' => [ 'playerId', 'tileType', 'inventory', 'm' ],
+            'preserve' => [ 'tileType' ],
         ]);
     }
 

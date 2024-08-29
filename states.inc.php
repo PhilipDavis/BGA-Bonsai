@@ -13,6 +13,7 @@ if (!defined('BGA_GAME_START'))
 {
     define('BGA_GAME_START', 1);
     define('PLAYER_TURN', 10);
+    define('PLAYER_TURN_DISCARD_EXCESS', 15);
     define('END_TURN', 20);
     define('BGA_GAME_END', 99);
 }
@@ -39,6 +40,21 @@ $machinestates = [
         'possibleactions' => [
             'meditate',
             'cultivate',
+            'jsError',
+        ],
+        'transitions' => [
+            'discardExcess' => PLAYER_TURN_DISCARD_EXCESS,
+            'endTurn' => END_TURN,
+        ],
+    ],
+
+    PLAYER_TURN_DISCARD_EXCESS => [
+        'name' => 'discardExcess',
+        'description' => clienttranslate('${actplayer} must discard excess tiles'),
+        'descriptionmyturn' => clienttranslate('${you} must discard excess tiles'),
+        'type' => 'activeplayer',
+        'possibleactions' => [
+            'discard',
             'jsError',
         ],
         'transitions' => [

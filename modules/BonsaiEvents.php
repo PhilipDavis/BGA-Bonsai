@@ -15,7 +15,7 @@ interface BonsaiEvents
     function onCapacityIncreased(int $playerId, int $delta);
     function onTilesReceived(int $move, int $playerId, array $tileTypes, int $slot);
     function onCardRevealed(/* TODO: int | null */ $cardId);
-    function onTilesDiscarded(int $move, int $playerId, array $tiles, object $inventory);
+    function onTilesDiscarded(int $move, int $playerId, array $tiles);
     function onEndTurn(int $playerId, int $score);
     function onLastRound();
     function onChangeNextPlayer(int $playerId);

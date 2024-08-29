@@ -103,6 +103,16 @@ class action_bonsai extends APP_GameAction
         $this->ajaxResponse();
     }
 
+    public function discard()
+    {
+        $this->setAjaxMode();
+
+        $discardTiles = $this->intsFromNumberListArg(self::getArg("discard", AT_numberlist, false, ''));
+        $this->game->action_discard($discardTiles);
+        
+        $this->ajaxResponse();
+    }
+
     public function jsError()
     {
         $this->setAjaxMode();

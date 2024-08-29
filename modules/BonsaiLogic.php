@@ -561,6 +561,11 @@ class BonsaiLogic
     // Meditation Methods
     //
 
+    function revealBeforeDiscard()
+    {
+        return isset($this->data->options->revealBeforeDiscard) && $this->data->options->revealBeforeDiscard;
+    }
+
     function meditate($flip, $removeTile, $drawCardId, $woodOrLeaf, $masterTiles, $placeTiles, $renounceGoals, $claimGoals, $discardTiles)
     {
         if ($flip)
@@ -574,7 +579,9 @@ class BonsaiLogic
         $this->placeTiles($placeTiles, $canPlay);
         $this->renounceGoals($renounceGoals);
         $this->claimGoals($claimGoals);
-        $this->discardTiles($discardTiles);
+
+        if (!$this->revealBeforeDiscard())
+            $this->discardTiles($discardTiles);
 
         if ($this->isSolo())
         {
@@ -781,8 +788,7 @@ class BonsaiLogic
                 throw new Exception('Failed to discard ' . $tileTypeName);
         }
 
-        // TODO: remove the inventory... it's just there to debug an issue on the client
-        $this->events->onTilesDiscarded($this->data->move, $playerId, $discards, $this->data->players->$playerId->inventory);
+        $this->events->onTilesDiscarded($this->data->move, $playerId, $discards);
     }
 
 
@@ -1338,45 +1344,14 @@ class BonsaiLogic
         $playerId = $this->getNextPlayerId();
         $player = $this->data->players->$playerId;
 
-        // Coin toss between taking a card or placing tiles
-        if (random_int(0, 1))
+        $mustDiscardCount = $this->getMustDiscardCount();
+        if ($this->revealBeforeDiscard() && $mustDiscardCount > 0)
         {
-            // Draw a card
-            $cards = array_values(array_filter($this->data->board, fn($cardId) => $cardId !== null));
-            shuffle($cards);
-            $cardId = array_pop($cards);
-
-            $woodOrLeaf = 0;
-            $slot = array_search($cardId, $this->data->board);
-            if ($slot === 1)
-                $woodOrLeaf = random_int(TILETYPE_WOOD, TILETYPE_LEAF);
-
-            $masterTile = 0; // Selection of the Wild resource
-            $card = BonsaiMats::$Cards[$cardId];
-            if ($card->type === CARDTYPE_MASTER)
-            {
-                if (array_search(TILETYPE_WILD, $card->resources) !== false)
-                    $masterTile = random_int(TILETYPE_WOOD, TILETYPE_FRUIT);
-            }
-            else if ($card->type === CARDTYPE_HELPER)
-            {
-                // Don't bother placing tiles... just pass and discard, if necessary
-            }
-
-            $claimGoals = [];
-            $renounceGoals = [];
-            foreach ($this->data->goalTiles as $goalId)
-            {
-                if ($this->doesPlayerQualifyForGoal($playerId, $goalId))
-                    $renounceGoals[] = $goalId;
-            }
-
             // Randomly select tiles to discard.
             // Could make this better by just keeping an array of inventory
             // rather than an object of counts by tile type
             $i = 0;
             $discardTiles = [];
-            $mustDiscardCount = $this->getMustDiscardCount();
             $inventory = (object)[ ...(array)$player->inventory ];
             while ($mustDiscardCount > 0)
             {
@@ -1391,28 +1366,24 @@ class BonsaiLogic
                 }
                 if ($i++ > 1000) throw new Exception('Failed to discard');
             }
-    
-            $placeTiles = []; // Place nothing
-
-            $this->meditate(false, null, $cardId, $woodOrLeaf, [ $masterTile ], $placeTiles, $renounceGoals, $claimGoals, $discardTiles);
+            $this->discardTiles($discardTiles);
+            return;
         }
-        else
+
+        $removeTiles = [];
+
+        // Just pass instead of placing anything
+        $placeTiles = [];
+
+        $claimGoals = [];
+        $renounceGoals = [];
+        foreach ($this->data->goalTiles as $goalId)
         {
-            $removeTiles = [];
-
-            // Just pass instead of placing anything
-            $placeTiles = [];
-
-            $claimGoals = [];
-            $renounceGoals = [];
-            foreach ($this->data->goalTiles as $goalId)
-            {
-                if ($this->doesPlayerQualifyForGoal($playerId, $goalId))
-                    $renounceGoals[] = $goalId;
-            }
-
-            $this->cultivate(false, $removeTiles, $placeTiles, $renounceGoals, $claimGoals);
+            if ($this->doesPlayerQualifyForGoal($playerId, $goalId))
+                $renounceGoals[] = $goalId;
         }
+
+        $this->cultivate(false, $removeTiles, $placeTiles, $renounceGoals, $claimGoals);
     }
 
     function getBoard()

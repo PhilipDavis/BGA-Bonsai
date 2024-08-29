@@ -883,6 +883,11 @@ function (
                     this.makeRemovalsSelectable();
                     break;
 
+                case 'discardExcess':
+                    // No await here because onEnteringState is not async
+                    this.workflowManager.advanceOrBeginAsync(this.discardTilesWorkflow({ afterReveal: true }));
+                    break;
+
                 case 'client_prune':
                     this.makeTilesUnselectable();
                     break;
@@ -986,6 +991,13 @@ function (
                     this.addActionButton(`bon_button-meditate-cancel`, _('Cancel'), () => this.onClickCancelMeditate(), null, false, 'red'); 
                     break;
                     
+                case 'client_discardConfirm':
+                    this.addActionButton('bon_button-discard-confirm-end-turn', _('End Turn'), () => this.onClickDiscardEndTurn());
+                    if (this.actionStack.canUndo()) {
+                        this.addActionButton(`bon_button-discard-cancel`, _('Cancel'), () => this.onClickCancelDiscard(), null, false, 'red'); 
+                    }
+                    break;
+                        
                 case 'client_meditateConfirm':
                     this.addActionButton('bon_button-meditate-confirm-end-turn', _('End Turn'), () => this.onClickMeditateEndTurn());
                     this.addActionButton(`bon_button-meditate-cancel`, _('Cancel'), () => this.onClickCancelMeditate(), null, false, 'red'); 
@@ -1702,30 +1714,52 @@ function (
             }
 
             // Discard tiles if necessary
-            let discarded = 0;
-            while (bonsai.tilesOverCapacity) {
-                this.makeTilesSelectable({ scrollIntoView: true });
-
-                const n = bonsai.tilesOverCapacity;
-                const msg =
-                    discarded
-                        ? n === 1
-                            ? _('${you} must discard 1 more tile')
-                            : _('${you} must discard ${n} more tiles')
-                        : n === 1
-                            ? _('${you} must discard 1 tile')
-                            : _('${you} must discard ${n} tiles');
-                yield new SetClientState('client_meditateDiscardTiles', msg, { n });
-                
-                const { tileDivId, tileType } = this.clientStateArgs;
-                yield new DiscardExcessTileAction(this.myPlayerId, tileType, tileDivId);
-                discarded++;
+            if (!bonsai.options.revealBeforeDiscard) {
+                yield this.discardTilesWorkflow();
             }
-            this.makeTilesUnselectable();
 
             yield new SetClientState('client_meditateConfirm', _('${you} must confirm your turn'));
 
             if (this.clientStateArgs.canceled) return false;
+        },
+
+        * discardTilesWorkflow({ afterReveal = false } = {}) {
+            while (true) {
+                let discarded = 0;
+                while (bonsai.tilesOverCapacity) {
+                    this.makeTilesSelectable({ scrollIntoView: true });
+
+                    const n = bonsai.tilesOverCapacity;
+                    const msg =
+                        discarded
+                            ? n === 1
+                                ? _('${you} must discard 1 more tile')
+                                : _('${you} must discard ${n} more tiles')
+                            : n === 1
+                                ? _('${you} must discard 1 tile')
+                                : _('${you} must discard ${n} tiles');
+
+                    if (afterReveal) {
+                        yield new SetClientState('client_discardTiles', msg, { n });
+                    }
+                    else {
+                        yield new SetClientState('client_meditateDiscardTiles', msg, { n });
+                    }
+                    
+                    const { tileDivId, tileType } = this.clientStateArgs;
+                    yield new DiscardExcessTileAction(this.myPlayerId, tileType, tileDivId);
+                    discarded++;
+                }
+                this.makeTilesUnselectable();
+
+                if (afterReveal) {
+                    yield new SetClientState('client_discardConfirm', _('${you} must confirm the discard'));
+
+                    if (this.clientStateArgs.canceled) return false;
+                }
+
+                break;
+            }
         },
 
         * placeTileWorkflow(prompt, resourceFilter = undefined, skipSelectPrompt = false) {
@@ -1995,6 +2029,42 @@ function (
             if (this.isClientLocked()) return;
             if (!this.isCurrentPlayerActive()) return;
             await this.workflowManager.advanceAsync({ claimed });
+        },
+
+        async onClickCancelDiscard() {
+            if (this.isClientLocked()) return;
+            if (!this.isCurrentPlayerActive()) return;
+            console.log('onClickCancelDiscard()');
+
+            // This is not a typical cancel... don't abort
+            // the workflow. Instead, pass in a flag.
+            await this.workflowManager.advanceAsync({ canceled: true });
+        },
+
+        async onClickDiscardEndTurn() {
+            if (this.isClientLocked()) return;
+            if (!this.isCurrentPlayerActive()) return;
+            console.log(`onClickDiscardEndTurn()`);
+
+            await this.workflowManager.advanceAsync();
+
+            const data = this.actionStack.apply();
+            let {
+                discard,
+            } = data;
+
+            // TODO: clean this up -- also, check the action parameter types... e.g. array vs numberlist
+            discard = discard && [ discard ].flatMap(d => d).join();
+            try {
+                await invokeServerActionAsync('discard', bonsai.data.move, { discard });
+            }
+            catch (err) {
+                await this.workflowManager.abortAsync();
+                this.resetClientStateArgs();
+                return;
+            }
+            await this.workflowManager.advanceAsync();
+            this.actionStack.clear();
         },
 
         

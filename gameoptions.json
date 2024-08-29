@@ -72,5 +72,19 @@
             }
         ],
         "default": 2
+    },
+    "103": {
+        "name": "Reveal the next card before discarding excess tiles",
+        "values": {
+            "1": {
+                "name": "No",
+                "description": "This offers smoother gameplay and allows for better undo capabilities, but is a deviation from the official board game rules"
+            },
+            "2": {
+                "name": "Yes",
+                "description": "This option will give you a slight edge in Solo Mode when you have excess tiles"
+            }
+        },
+        "default": 1
     }
 }
