@@ -427,14 +427,12 @@ define([], () => {
                 console.log(`Entering ${fnName}`, data.args);
                 if (notificationStack.length) {
                     console.warn('Already in notifications!', JSON.stringify(notificationStack));
-                    //debugger; // KILL
                 }
                 notificationStack.push(fnName);
                 await gameui[fnName].call(gameui, data.args);
                 console.log(`Exiting ${fnName}`);
                 if (notificationStack[notificationStack.length - 1] !== fnName) {
                     console.warn(`Unexpected notifications stack: ${JSON.stringify(notificationStack)}`);
-                    //debugger; // KILL
                 }
                 const index = notificationStack.lastIndexOf(fnName);
                 notificationStack.splice(index, 1);
