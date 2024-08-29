@@ -196,8 +196,8 @@ define([], () => {
         async abortAsync() {
             console.log('Aborting workflow');
             await this.actionStack.undoAllAsync();
-            this.gameui.restoreServerGameState();
             this.workflow = null;
+            this.gameui.restoreServerGameState();
         }
 
         //
@@ -260,7 +260,7 @@ define([], () => {
         async undoAsync() {
             try {
                 this.fnLock.call(this.context);
-                while (true) {
+                while (this.stack.length) {
                     const action = this.stack.pop();
                     await action.undoAsync();
                     if (action.isCheckpoint()) {
