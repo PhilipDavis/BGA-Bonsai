@@ -954,6 +954,9 @@ function (
                         }
                         this.addActionButton(`bon_button-inventory-tile-stop`, _('Stop'), () => this.onClickStopPlacingTiles()); 
                     }
+                    else {
+                        this.addActionButton(`bon_button-inventory-tile-stop`, _('Place Nothing'), () => this.onClickStopPlacingTiles());
+                    }
                     this.addActionButton(`bon_button-inventory-tile-cancel`, _('Cancel'), () => this.onClickCancel(), null, false, 'red'); 
                     break;
 
@@ -1695,7 +1698,7 @@ function (
 
                     if (this.clientStateArgs.canceled) return false;
 
-                    // Bail out if the player cannot play a tile
+                    // Bail out if the player cannot (or chose not to) play a tile
                     if (!firstTileType) break;
 
                     let index = resources.indexOf(firstTileType);

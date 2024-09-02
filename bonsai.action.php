@@ -63,7 +63,7 @@ class action_bonsai extends APP_GameAction
         $removeTiles = $this->tileLocsFromNumberList(self::getArg("remove", AT_numberlist, false, ''));
         $remove = array_shift($removeTiles);
 
-        $place = $this->tileMovesFromNumberList(self::getArg("place", AT_numberlist, true));
+        $place = $this->tileMovesFromNumberList(self::getArg("place", AT_numberlist, false, ''));
         $renounce = $this->intsFromNumberListArg(self::getArg("renounce", AT_numberlist, false, ''));
         $claim = $this->intsFromNumberListArg(self::getArg("claim", AT_numberlist, false, ''));
 
