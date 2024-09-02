@@ -569,14 +569,14 @@ class RenounceGoalAction extends Action {
 
         bonsai.unrenounceGoal(this.playerId, this.goalId);
         await this.animateGoalUnRenouncementAsync();
-        gameui.adaptPlayersPanels();
+        //gameui.adaptPlayersPanels(); // BGA recently removed this function
         gameui.updateGoalTooltips();
     }
 
     async animateGoalRenouncementAsync() {
         // Create a hidden goal tile on the player summary board
         const tileDiv = gameui.createSummaryGoalTilePlaceholder(this.playerId, this.goalId, true, false);
-        gameui.adaptPlayersPanels();
+        //gameui.adaptPlayersPanels(); // BGA recently removed this function
 
         if (gameui.instantaneousMode) return;
 
@@ -653,7 +653,7 @@ class ClaimGoalAction extends Action {
 
     async undoAsync() {
         await this.animateGoalFromPlayerBoardAsync(this.playerId, this.goalId);
-        gameui.adaptPlayersPanels();
+        //gameui.adaptPlayersPanels(); // BGA recently removed this function
 
         bonsai.unclaimGoal(this.playerId, this.goalId);
         gameui.updateGoalTooltips();
@@ -672,7 +672,7 @@ class ClaimGoalAction extends Action {
     async animateGoalToPlayerBoardAsync(playerId, goalId) {
         // Create a hidden goal tile on the player summary board
         const destDiv = gameui.createSummaryGoalTilePlaceholder(playerId, goalId, false);
-        gameui.adaptPlayersPanels();
+        //gameui.adaptPlayersPanels(); // BGA recently removed this function
 
         // Animate the visible goal tile to the player board
         const goalDiv = document.getElementById(`bon_goal-${goalId}`);
