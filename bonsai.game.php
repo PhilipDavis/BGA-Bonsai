@@ -315,7 +315,6 @@ class Bonsai extends Table implements BonsaiEvents
         $this->notifyAllPlayers('potFlipped', '', [
             'playerId' => $playerId,
             'm' => $move,
-            'preserve' => [ 'playerId', 'm' ],
         ]);
     }
 
@@ -331,7 +330,6 @@ class Bonsai extends Table implements BonsaiEvents
             'y' => $y,
             'score' => $score,
             'm' => $move,
-            'preserve' => [ 'playerId', 'tile', 'x', 'y', 'score', 'm' ],
         ]);
     }
 
@@ -369,7 +367,7 @@ class Bonsai extends Table implements BonsaiEvents
             'tiles' => $placeTiles,
             'score' => $score,
             'm' => $moveNumber,
-            'preserve' => [ 'playerId', 'score', 'tiles', 'tileType', 'm' ],
+            'preserve' => [ 'tileType' ],
         ]);
     }
 
@@ -386,7 +384,7 @@ class Bonsai extends Table implements BonsaiEvents
             'playerName' => $this->getPlayerNameById($playerId),
             'goal' => $goalId,
             'm' => $move,
-            'preserve' => [ 'playerId', 'goal', 'm' ],
+            'preserve' => [ 'goal' ],
         ]);
     }
 
@@ -404,7 +402,7 @@ class Bonsai extends Table implements BonsaiEvents
             'goal' => $goalId,
             'score' => $score,
             'm' => $move,
-            'preserve' => [ 'playerId', 'goal', 'score', 'm' ],
+            'preserve' => [ 'goal' ],
         ]);
     }
 
@@ -525,7 +523,7 @@ class Bonsai extends Table implements BonsaiEvents
             'playerId' => $playerId,
             'cardId' => $cardId,
             'm' => $move,
-            'preserve' => [ 'playerId', 'cardId', 'm' ],
+            'preserve' => [ 'cardId' ],
         ]);
     }
 
@@ -535,7 +533,6 @@ class Bonsai extends Table implements BonsaiEvents
             'playerName' => $this->getPlayerNameById($playerId),
             'playerId' => $playerId,
             'delta' => $delta,
-            'preserve' => [ 'playerId' ],
         ]);
     }
 
@@ -568,7 +565,7 @@ class Bonsai extends Table implements BonsaiEvents
             'tileType' => $tileTypes,
             'slot' => $slot,
             'm' => $move,
-            'preserve' => [ 'playerId', 'tileType', 'slot', 'm' ],
+            'preserve' => [ 'tileType' ],
         ]);
     }
 
@@ -623,7 +620,6 @@ class Bonsai extends Table implements BonsaiEvents
         $this->notifyAllPlayers('endTurn', '', [
             'score' => $score,
             'playerId' => $playerId,
-            'preserve' => [ 'score', 'playerId' ],
         ]);
     }
 
@@ -678,7 +674,7 @@ class Bonsai extends Table implements BonsaiEvents
             ],
             'tileType' => $tileTypes,
             'tiles' => $tiles,
-            'preserve' => [ 'playerId', 'tiles', 'tileType' ],
+            'preserve' => [ 'tileType' ],
         ]);
     }
 
@@ -730,7 +726,6 @@ class Bonsai extends Table implements BonsaiEvents
         $this->notifyAllPlayers('finalScore', '', [
             'scores' => $scores,
             'reveal' => $faceDownCards,
-            'preserve' => [ 'scores', 'reveal' ],
         ]);
 
         $this->gamestate->nextState('gameOver');
