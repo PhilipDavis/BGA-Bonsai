@@ -294,9 +294,9 @@ class BonsaiLogic
         $played = $this->data->players->$playerId->played;
         if (count($played) > 1)
             throw new Exception('Too late to flip');
-        $this->events->onPotFlipped($this->data->move, $playerId);
-        $isFlipped = $played[0][1] == 1; 
-        $this->data->players->$playerId->played = [ [ 1, $isFlipped ? 0 : 1, 0, 0 ] ];
+        $wasFlipped = $played[0][1] == 1; 
+        $this->data->players->$playerId->played = [ [ 1, $wasFlipped ? 0 : 1, 0, 0 ] ];
+        $this->events->onPotFlipped($this->data->move, $playerId, !$wasFlipped);
     }
 
 

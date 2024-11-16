@@ -5,7 +5,7 @@ interface BonsaiEvents
 {
     function onGameStart(array $cardIds);
     function onPlayerStart(string $playerId, array $tileTypes);
-    function onPotFlipped(int $move, string $playerId);
+    function onPotFlipped(int $move, string $playerId, bool $isFlipped);
     function onTileRemoved(int $move, int $playerId, int $tileType, int $x, int $y, int $score);
     function onTilesAdded(int $move, int $playerId, array $placeTiles, int $score);
     function onGoalRenounced(int $move, int $playerId, int $goalId);

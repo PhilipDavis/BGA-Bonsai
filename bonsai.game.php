@@ -310,11 +310,12 @@ class Bonsai extends Table implements BonsaiEvents
         $this->gamestate->nextState('endTurn');
     }
 
-    function onPotFlipped($move, $playerId)
+    function onPotFlipped($move, $playerId, bool $isFlipped)
     {
         $this->notifyAllPlayers('potFlipped', '', [
             'playerId' => $playerId,
             'm' => $move,
+            'f' => $isFlipped,
         ]);
     }
 

@@ -2092,9 +2092,9 @@ function (
             return false;
         },
 
-        async notify_potFlipped({ playerId, m }) {
+        async notify_potFlipped({ playerId, m, f }) {
             if (this.shouldShowNotification(playerId, m)) {
-                await new FlipPotAction(playerId).doAsync();
+                await new FlipPotAction(playerId, f).doAsync();
             }
         },
 
