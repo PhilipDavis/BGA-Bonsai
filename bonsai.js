@@ -240,7 +240,7 @@ function (
                 potDiv.style.transform = 'translate(-50%, 0) rotateY(180deg)';
             }
 
-            this.adjustTreeSizeAndPosAsync(playerId);
+            this.adjustTreeSizeAndPosAsync(playerId, true);
 
             this.scoreCounter[playerId] = new ebg.counter();
             this.scoreCounter[playerId].create(`player_score_${playerId}`);
@@ -779,7 +779,7 @@ function (
             return { x1, y1, x2, y2, y1Pot: -1 };
         },
 
-        async adjustTreeSizeAndPosAsync(playerId) {
+        async adjustTreeSizeAndPosAsync(playerId, instantaneous = this.instantaneousMode) {
             if (!playerId) playerId = this.myPlayerId;
 
             const hostDiv = document.getElementById(`bon_tree-host-${playerId}`);
@@ -848,7 +848,7 @@ function (
                 }
             }
 
-            if (gameui.instantaneousMode) {
+            if (instantaneous || gameui.instantaneousMode) {
                 setStyle(treeDiv.style);
             }
             else {
