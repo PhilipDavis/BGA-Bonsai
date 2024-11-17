@@ -178,12 +178,24 @@ function (
             // to be repositioned. Only do the repositioning once
             // the resizing has been idle for a while.
             this.resizeTimerId = null;
+            let lastSurfaceWidth = 0;
             this.resizeObserver = new ResizeObserver(() => {
                 clearTimeout(this.resizeTimerId);
-                this.resizeTimerId = setTimeout(() => {
-                    for (const playerId of bonsai.data.order) {
-                        this.adjustTreeSizeAndPosAsync(playerId);
+                this.resizeTimerId = setTimeout(async () => {
+                    // Bail out if the width hasn't changed since last time.
+                    // (i.e. ignore any height changes)
+                    if (lastSurfaceWidth !== Math.round(surfaceDiv.clientWidth)) {
+                        lastSurfaceWidth = Math.round(surfaceDiv.clientWidth);
                     }
+                    else {
+                        return;
+                    }
+
+                    await Promise.all(
+                        bonsai.data.order.map(async playerId => {
+                            this.adjustTreeSizeAndPosAsync(playerId);
+                        })
+                    );
                 }, 200);
             });
             const surfaceDiv = document.getElementById('bon_surface');
