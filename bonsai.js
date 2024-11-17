@@ -774,22 +774,14 @@ function (
             if (!hostDiv) return;
 
             //
-            // Create a temporary invisible container and tile to
-            // measure the reference size of a tile.
+            // Calculate the tile size based on the pot
             //
-            const hiddenDiv = document.createElement('div');
-            hiddenDiv.classList.add('bon_hidden');
-            hostDiv.appendChild(hiddenDiv);
-
-            const referenceTileDiv = this.createTile(playerId, TileType.Wood, hiddenDiv);
-            const tileRect = referenceTileDiv.getBoundingClientRect();
-            const tileWidth = Math.round(tileRect.width);
-            const tileHeight = Math.round(tileRect.height);
+            const potDiv = hostDiv.querySelector('.bon_pot');
+            const potSize = potDiv.getBoundingClientRect();
+            const tileWidth = potSize.width / 5.07;
+            const tileHeight = potSize.height / 2.18;
             const hPadding = 2 * tileWidth;
             const vPadding = tileHeight * .73 + tileHeight;
-
-            // Remove the temporary container and reference tile
-            hostDiv.removeChild(hiddenDiv);
 
             const rect = hostDiv.getBoundingClientRect();
 
