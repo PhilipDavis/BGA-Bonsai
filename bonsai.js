@@ -817,11 +817,11 @@ function (
             const threshold = 3;
             if (paddedHeight * scale - rect.height > threshold) {
                 console.log(`Growing height to ${paddedHeight}px (scale ${scale})`);
-                hostDiv.style.height = `${paddedHeight}px`;
+                hostDiv.style.height = `calc(${paddedHeight}px / var(--bga-game-zoom, 1))`;
             }
             else if (paddedHeight * scale - rect.height < threshold) {
                 console.log(`Shrinking height to ${paddedHeight}px (scale ${scale})`);
-                hostDiv.style.height = `${paddedHeight}px`;
+                hostDiv.style.height = `calc(${paddedHeight}px / var(--bga-game-zoom, 1))`;
             }
 
             // Shift to the left or the right as the tree grows
