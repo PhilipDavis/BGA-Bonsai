@@ -364,7 +364,7 @@ class Bonsai extends Table implements BonsaiEvents
                 'log' => implode(', ', $logParts),
                 'args' => $args,
             ],
-            'tileType' =>$tileTypes,
+            'tileType' => $tileTypes,
             'tiles' => $placeTiles,
             'score' => $score,
             'm' => $moveNumber,
